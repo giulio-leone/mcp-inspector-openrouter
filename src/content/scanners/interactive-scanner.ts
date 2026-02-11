@@ -135,6 +135,49 @@ export class InteractiveScanner extends BaseScanner {
       );
     }
 
+    // ── Custom clickable elements (non-semantic divs acting as buttons) ──
+    // Catches elements like LinkedIn's "Start a post" trigger that use
+    // tabindex + aria-label instead of <button> or role="button".
+    const clickables = (root as ParentNode).querySelectorAll(
+      '[tabindex="0"][aria-label]' +
+        ':not(button):not(a):not(input):not(select):not(textarea)' +
+        ':not([role="button"]):not([role="tab"]):not([role="switch"])' +
+        ':not([role="combobox"]):not([role="listbox"])' +
+        ':not([role="textbox"]):not([contenteditable="true"])',
+    );
+    for (const el of clickables) {
+      if (tools.length >= this.maxTools) break;
+      if (this.isClaimed(el)) continue;
+      if (!this.isVisible(el)) continue;
+      if (!this.hasMeaningfulSize(el, 30, 20)) continue;
+
+      const label = this.getLabel(el);
+      if (!label || label.length < 2 || label.length > 60) continue;
+      if (isSocialKeyword(label)) continue;
+      if (/^(vai a|skip to|go to content)/i.test(label)) continue;
+
+      this.claim(el);
+      tools.push(
+        this.createTool(
+          `ui.click-${this.slugify(label)}`,
+          `Click: ${label}`,
+          el,
+          this.makeInputSchema([]),
+          this.computeConfidence({
+            hasAria: true,
+            hasLabel: true,
+            hasName: !!el.id,
+            isVisible: true,
+            hasRole: !!el.getAttribute('role'),
+            hasSemanticTag: false,
+          }),
+          {
+            annotations: this.makeAnnotations({ destructive: false, idempotent: false }),
+          },
+        ),
+      );
+    }
+
     return tools;
   }
 }

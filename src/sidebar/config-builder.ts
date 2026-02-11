@@ -394,8 +394,22 @@ export function buildChatConfig(
   if (mentionContexts.length > 0) {
     systemInstruction.push('', '**CROSS-TAB CONTEXTS (from @mentioned tabs):**');
     systemInstruction.push('The user referenced other browser tabs. Below is the context from each mentioned tab.');
-    systemInstruction.push('**IMPORTANT:** You have FULL ACCESS to the tools/actions on the mentioned tab. When the user asks to perform an action "on" a mentioned tab, USE THE AVAILABLE TOOLS to execute it. The tool execution will be automatically routed to the correct tab.');
-    systemInstruction.push('Do NOT say you cannot interact with the mentioned tab — you CAN, through the available tools.');
+    systemInstruction.push(
+      '',
+      '⚠️ **MANDATORY CROSS-TAB TOOL USAGE RULES** ⚠️',
+      '1. You have FULL ACCESS to the tools/actions on the mentioned tab. Tool calls are automatically routed to the correct tab.',
+      '2. You MUST use the available tools to fulfill the user\'s request. Do NOT respond with text-only answers when tools are available.',
+      '3. NEVER say "I can\'t", "I\'m unable to", or "I don\'t have access to" when tools exist that could accomplish the task. ALWAYS attempt to use them.',
+      '4. If you are unsure which tool to use, pick the most relevant one and TRY it. A failed tool call is better than refusing to try.',
+      '5. The tools listed below come FROM the mentioned tab — they are real, functional, and authorized. Treat them as first-class actions.',
+    );
+
+    if (currentTools.length > 100) {
+      systemInstruction.push(
+        '',
+        '**TOOL SELECTION GUIDANCE:** There are many tools available. Focus on the tools whose names/descriptions are most relevant to the user\'s intent. You do NOT need to review all tools — identify the 2-5 most relevant ones and use those.',
+      );
+    }
 
     for (const mc of mentionContexts) {
       systemInstruction.push('', `--- @${mc.title} (Tab ID: ${mc.tabId}) ---`);

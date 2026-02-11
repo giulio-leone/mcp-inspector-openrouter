@@ -242,9 +242,10 @@ export class AIChatController {
       }
     }
 
-    // Merge current page tools + mentioned tab tools (dedup by name, mentioned wins)
+    // When mentions are active, use only mentioned tab tools (drop current tab tools to reduce noise).
+    // The mentioned tab's tools are what the user cares about; browser tools are added by buildChatConfig.
     const allTools = mentionedTools.length > 0
-      ? [...currentTools, ...mentionedTools.filter(mt => !currentTools.some(ct => ct.name === mt.name))]
+      ? mentionedTools
       : currentTools;
 
     logger.info('Tools', `Merged: ${currentTools.length} current + ${mentionedTools.length} mentioned = ${allTools.length} total`);

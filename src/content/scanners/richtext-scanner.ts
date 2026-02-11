@@ -19,6 +19,7 @@ const RICH_TEXT_SELECTORS = [
   '[aria-label*="post" i][contenteditable]',
   '[aria-label*="What\'s on your mind" i]',
   '[aria-label*="Start a post" i]',
+  '[aria-label*="Avvia un post" i]',
   '[aria-label*="write a comment" i]',
   '[aria-label*="write a reply" i]',
   '[aria-label*="scrivi un post" i]',
@@ -66,6 +67,15 @@ export class RichTextScanner extends BaseScanner {
 
       // Skip if inside a form with toolname
       if (el.closest('form[toolname]')) continue;
+
+      // Skip elements that are NOT actual editing surfaces — aria-label selectors
+      // (e.g. "[aria-label*='Start a post']") can match trigger buttons
+      if (
+        !(el as HTMLElement).isContentEditable &&
+        el.getAttribute('role') !== 'textbox' &&
+        !el.matches('iframe, textarea, .CodeMirror-code') &&
+        !el.querySelector('[contenteditable="true"], [contenteditable="plaintext-only"]')
+      ) continue;
 
       // Build a unique key for local dedup
       const label = this.getLabel(el);
