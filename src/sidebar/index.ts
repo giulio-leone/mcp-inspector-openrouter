@@ -883,6 +883,7 @@ async function promptAI(): Promise<void> {
       for (const { name, args, id } of functionCalls) {
         // Handle plan management tools locally (not sent to content script)
         if (name === 'create_plan' || name === 'update_plan') {
+          console.debug(`[Sidebar] Processing ${name} tool call`, args);
           const planArgs = args as { goal: string; steps: Array<{ id: string; title: string; children?: Array<{ id: string; title: string }> }> };
           const plan: Plan = {
             goal: planArgs.goal,
@@ -908,13 +909,14 @@ async function promptAI(): Promise<void> {
           } else {
             const planEl = renderPlan(plan);
             activePlan = { plan, element: planEl };
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) {
+            console.debug('[Sidebar] chatContainer exists:', !!chatContainer);
+            if (chatContainer) {
               const wrapper = document.createElement('div');
               wrapper.className = 'msg msg-plan';
               wrapper.appendChild(planEl);
-              chatMessages.appendChild(wrapper);
-              chatMessages.scrollTop = chatMessages.scrollHeight;
+              chatContainer.appendChild(wrapper);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+              console.debug('[Sidebar] Plan rendered into chatContainer');
             }
           }
 
