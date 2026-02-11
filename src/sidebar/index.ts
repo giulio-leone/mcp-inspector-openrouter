@@ -862,6 +862,11 @@ async function promptAI(): Promise<void> {
     const functionCalls: readonly ParsedFunctionCall[] =
       response.functionCalls ?? [];
 
+    console.debug(`[Sidebar] Iteration ${iteration}: ${functionCalls.length} tool calls, text=${!!response.text}, planMode=${planModeEnabled}`);
+    if (functionCalls.length > 0) {
+      console.debug('[Sidebar] Tool calls:', functionCalls.map((fc) => fc.name).join(', '));
+    }
+
     if (functionCalls.length === 0) {
       if (!response.text) {
         addAndRender(
@@ -1129,7 +1134,11 @@ function getConfig(pageContext?: PageContext | null): ChatConfig {
 
   if (planModeEnabled) {
     systemInstruction.push(
-      '**PLAN MODE IS FORCED ON.** You MUST call `create_plan` as your FIRST tool call for EVERY user request, then execute the plan steps.',
+      '',
+      '⚠️ **MANDATORY: PLAN MODE IS ENABLED** ⚠️',
+      'You MUST call the `create_plan` tool as your VERY FIRST action before ANY other tool call.',
+      'This is NOT optional. Every single user request MUST start with create_plan.',
+      'If you skip create_plan, your response will be rejected.',
     );
   }
 
