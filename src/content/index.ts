@@ -13,6 +13,7 @@ import type {
   SchemaProperty,
   ContentScriptMessage,
   PageContext,
+  PageLink,
   ProductInfo,
 } from '../types';
 import {
@@ -245,6 +246,10 @@ if (window.__wmcp_loaded) {
             return false;
           }
 
+          case 'CAPTURE_SCREENSHOT':
+            // Screenshot is handled by background script, not content script
+            return false;
+
           default:
             return false;
         }
@@ -322,6 +327,10 @@ if (window.__wmcp_loaded) {
     let cartCount: number | undefined;
     let formDefaults: Record<string, Record<string, string>> | undefined;
     let mainHeading: string | undefined;
+    let pageText: string | undefined;
+    let headings: string[] | undefined;
+    let links: PageLink[] | undefined;
+    let metaDescription: string | undefined;
 
     // Products via Schema.org microdata or data-mcp-type
     const productEls = document.querySelectorAll(
@@ -369,6 +378,48 @@ if (window.__wmcp_loaded) {
     const h1 = document.querySelector('h1');
     if (h1) mainHeading = h1.textContent?.trim();
 
+    // Full visible page text (truncated to 8000 chars)
+    try {
+      const rawText = document.body.innerText;
+      if (rawText) {
+        pageText = rawText.length <= 8000
+          ? rawText
+          : rawText.slice(0, 8000) + '\n[…truncated]';
+      }
+    } catch { /* ignore */ }
+
+    // All h1-h3 headings
+    const headingEls = document.querySelectorAll('h1, h2, h3');
+    if (headingEls.length) {
+      headings = [...headingEls]
+        .map((el) => el.textContent?.trim() ?? '')
+        .filter(Boolean);
+    }
+
+    // Meta description
+    const metaEl = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (metaEl?.content) {
+      metaDescription = metaEl.content;
+    }
+
+    // Top 30 links from nav/main areas
+    const linkEls = document.querySelectorAll('nav a[href], main a[href], header a[href], [role="navigation"] a[href]');
+    const allLinks = linkEls.length > 0 ? linkEls : document.querySelectorAll('a[href]');
+    if (allLinks.length) {
+      const seen = new Set<string>();
+      links = [];
+      for (const a of allLinks) {
+        if (links.length >= 30) break;
+        const anchor = a as HTMLAnchorElement;
+        const text = anchor.textContent?.trim();
+        const href = anchor.href;
+        if (text && href && !seen.has(href)) {
+          seen.add(href);
+          links.push({ text, href });
+        }
+      }
+    }
+
     const ctx: PageContext = {
       url: location.href,
       title: document.title,
@@ -376,6 +427,10 @@ if (window.__wmcp_loaded) {
       ...(cartCount !== undefined ? { cartCount } : {}),
       ...(formDefaults ? { formDefaults } : {}),
       ...(mainHeading ? { mainHeading } : {}),
+      ...(pageText ? { pageText } : {}),
+      ...(headings?.length ? { headings } : {}),
+      ...(links?.length ? { links } : {}),
+      ...(metaDescription ? { metaDescription } : {}),
     };
 
     console.debug('[WebMCP] Page context extracted:', ctx);

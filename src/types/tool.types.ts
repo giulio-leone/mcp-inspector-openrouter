@@ -136,6 +136,12 @@ export interface ProductInfo {
   readonly price: string | undefined;
 }
 
+/** A navigation link extracted from the page */
+export interface PageLink {
+  readonly text: string;
+  readonly href: string;
+}
+
 /** Live page context snapshot extracted by content script */
 export interface PageContext {
   readonly url: string;
@@ -144,6 +150,10 @@ export interface PageContext {
   readonly cartCount?: number;
   readonly formDefaults?: Readonly<Record<string, Record<string, string>>>;
   readonly mainHeading?: string;
+  readonly pageText?: string;
+  readonly headings?: readonly string[];
+  readonly links?: readonly PageLink[];
+  readonly metaDescription?: string;
 }
 
 /** Page context used by the AI classifier (lighter weight) */

@@ -99,6 +99,9 @@ export const STORAGE_KEY_API_KEY = 'openrouter_api_key';
 /** localStorage key for selected model */
 export const STORAGE_KEY_MODEL = 'openrouter_model';
 
+/** Storage key for screenshot toggle */
+export const STORAGE_KEY_SCREENSHOT_ENABLED = 'wmcp_screenshot_enabled';
+
 // ── Timing ──
 
 /** Debounce delay for DOM mutation observer (ms) */

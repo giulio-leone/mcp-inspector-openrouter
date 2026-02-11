@@ -45,6 +45,10 @@ export interface CancelExecuteMessage {
   readonly toolName: string;
 }
 
+export interface CaptureScreenshotMessage {
+  readonly action: 'CAPTURE_SCREENSHOT';
+}
+
 /** All messages that can be sent TO the content script */
 export type ContentScriptMessage =
   | PingMessage
@@ -54,7 +58,8 @@ export type ContentScriptMessage =
   | ExecuteToolMessage
   | GetCrossDocumentResultMessage
   | ConfirmExecuteMessage
-  | CancelExecuteMessage;
+  | CancelExecuteMessage
+  | CaptureScreenshotMessage;
 
 // ── Background Script Messages ──
 
@@ -65,7 +70,7 @@ export interface AIClassifyMessage {
 }
 
 /** All messages that can be sent TO the background script */
-export type BackgroundMessage = AIClassifyMessage;
+export type BackgroundMessage = AIClassifyMessage | CaptureScreenshotMessage;
 
 // ── Sidebar Messages (content → sidebar via runtime) ──
 
@@ -117,5 +122,10 @@ export interface QueuedResponse {
 
 export interface AIClassifyResponse {
   readonly text?: string;
+  readonly error?: string;
+}
+
+export interface ScreenshotResponse {
+  readonly screenshot?: string;
   readonly error?: string;
 }

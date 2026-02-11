@@ -86,7 +86,9 @@ async function handleAIClassify(msg: AIClassifyMessage): Promise<AIClassifyRespo
   }
 
   const data = (await response.json()) as AIResponse;
-  return { text: data.choices?.[0]?.message?.content || '' };
+  const content = data.choices?.[0]?.message?.content;
+  const text = typeof content === 'string' ? content : '';
+  return { text };
 }
 
 // ── Message Listener ──
@@ -103,6 +105,10 @@ function isAIClassifyMessage(msg: unknown): msg is AIClassifyMessage {
   return typeof msg === 'object' && msg !== null && (msg as Record<string, unknown>).action === 'AI_CLASSIFY';
 }
 
+function isCaptureScreenshotMessage(msg: unknown): boolean {
+  return typeof msg === 'object' && msg !== null && (msg as Record<string, unknown>).action === 'CAPTURE_SCREENSHOT';
+}
+
 chrome.runtime.onMessage.addListener(
   (msg: unknown, sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void): boolean | undefined => {
     // Badge update from content script
@@ -117,6 +123,14 @@ chrome.runtime.onMessage.addListener(
       handleAIClassify(msg)
         .then(sendResponse)
         .catch((err: Error) => sendResponse({ error: err.message }));
+      return true; // async response
+    }
+
+    // Screenshot capture (requires activeTab permission)
+    if (isCaptureScreenshotMessage(msg)) {
+      chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 70 })
+        .then(dataUrl => sendResponse({ screenshot: dataUrl }))
+        .catch(err => sendResponse({ error: (err as Error).message }));
       return true; // async response
     }
 
