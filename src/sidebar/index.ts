@@ -16,7 +16,7 @@ import type {
   Plan,
   PlanStep,
 } from '../types';
-import { renderPlan, updatePlanStep, parsePlanFromText } from './plan-renderer';
+import { renderPlan, updatePlanStep } from './plan-renderer';
 import { OpenRouterAdapter, OpenRouterChat } from '../services/adapters';
 import {
   STORAGE_KEY_LOCK_MODE,
@@ -868,66 +868,61 @@ async function promptAI(): Promise<void> {
           'error',
           `⚠️ AI response has no text: ${JSON.stringify(response.candidates)}`,
         );
-        finalResponseGiven = true;
       } else {
-        const text = response.text.trim();
-        const planResult = parsePlanFromText(text);
-        if (planResult) {
-          // Render the plan in chat
-          const planEl = renderPlan(planResult.plan);
-          activePlan = { plan: planResult.plan, element: planEl };
-
-          const chatMessages = document.getElementById('chat-messages');
-          if (chatMessages) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'msg msg-plan';
-            wrapper.appendChild(planEl);
-            chatMessages.appendChild(wrapper);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-          }
-
-          if (planResult.cleanText) {
-            addAndRender('ai', planResult.cleanText);
-          }
-
-          // Auto-trigger plan execution: send follow-up to start step 1
-          const updatedConfig = getConfig(pageContext);
-          trace.push({ userPrompt: { message: 'Now execute the plan. Start with step 1. Use tools.', config: updatedConfig } });
-          currentResult = await chat.sendMessage({
-            message: 'Now execute the plan. Start with step 1. Use the available tools.',
-            config: updatedConfig,
-          });
-          // Don't set finalResponseGiven — loop continues to process tool calls
-        } else {
-          addAndRender('ai', text);
-          finalResponseGiven = true;
-        }
+        addAndRender('ai', response.text.trim());
       }
+      finalResponseGiven = true;
     } else {
-      // Check if response also contains text with a plan update
-      if (response.text) {
-        const planUpdate = parsePlanFromText(response.text.trim());
-        if (planUpdate && activePlan) {
-          activePlan.plan = planUpdate.plan;
-          const newPlanEl = renderPlan(planUpdate.plan);
-          activePlan.element.replaceWith(newPlanEl);
-          activePlan.element = newPlanEl;
-        } else if (planUpdate) {
-          const planEl = renderPlan(planUpdate.plan);
-          activePlan = { plan: planUpdate.plan, element: planEl };
-          const chatMessages = document.getElementById('chat-messages');
-          if (chatMessages) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'msg msg-plan';
-            wrapper.appendChild(planEl);
-            chatMessages.appendChild(wrapper);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-          }
-        }
-      }
 
       const toolResponses: ToolResponse[] = [];
       for (const { name, args, id } of functionCalls) {
+        // Handle plan management tools locally (not sent to content script)
+        if (name === 'create_plan' || name === 'update_plan') {
+          const planArgs = args as { goal: string; steps: Array<{ id: string; title: string; children?: Array<{ id: string; title: string }> }> };
+          const plan: Plan = {
+            goal: planArgs.goal,
+            steps: (planArgs.steps ?? []).map((s) => ({
+              id: s.id,
+              title: s.title,
+              status: 'pending' as const,
+              children: s.children?.map((c) => ({
+                id: c.id,
+                title: c.title,
+                status: 'pending' as const,
+              })),
+            })),
+            createdAt: Date.now(),
+            status: 'pending',
+          };
+
+          if (activePlan && name === 'update_plan') {
+            activePlan.plan = plan;
+            const newPlanEl = renderPlan(plan);
+            activePlan.element.replaceWith(newPlanEl);
+            activePlan.element = newPlanEl;
+          } else {
+            const planEl = renderPlan(plan);
+            activePlan = { plan, element: planEl };
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+              const wrapper = document.createElement('div');
+              wrapper.className = 'msg msg-plan';
+              wrapper.appendChild(planEl);
+              chatMessages.appendChild(wrapper);
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+          }
+
+          toolResponses.push({
+            functionResponse: {
+              name,
+              response: { result: `Plan "${plan.goal}" created with ${plan.steps.length} steps. Now execute it.` },
+              tool_call_id: id,
+            },
+          });
+          continue;
+        }
+
         addAndRender('tool_call', '', { tool: name, args });
 
         if (activePlan) {
@@ -1128,13 +1123,13 @@ function getConfig(pageContext?: PageContext | null): ChatConfig {
     `Today's date is: ${getFormattedDate()}`,
     "CRITICAL RULE: Whenever the user provides a relative date (e.g., 'next Monday', 'tomorrow', 'in 3 days'), you must calculate the exact calendar date based on today's date.",
     // Plan mode rules
-    '17. **PLAN MODE:** For complex tasks requiring 2+ steps (navigation, search+analysis, multi-tool chains), FIRST output a plan as a JSON code block tagged "plan", then immediately start executing. The plan format is: ```plan\\n{"goal":"description","steps":[{"id":"1","title":"Step 1"},{"id":"2","title":"Step 2","children":[{"id":"2.1","title":"Sub-step"}]}]}\\n``` Always output the plan BEFORE making any tool calls. After outputting the plan as text, proceed to call tools for step 1.',
-    '18. **PLAN UPDATES:** If the plan needs changes during execution, include an updated ```plan``` block.',
+    '17. **PLAN MODE:** For complex tasks requiring 2+ steps (navigation, search+analysis, multi-tool chains), call the `create_plan` tool FIRST with a structured plan, then proceed to execute each step using the appropriate tools. The plan will be shown to the user in real-time.',
+    '18. **PLAN UPDATES:** If during execution you discover the plan needs changes, call `update_plan` with the revised plan.',
   ];
 
   if (planModeEnabled) {
     systemInstruction.push(
-      '**PLAN MODE IS FORCED ON.** You MUST create a plan for EVERY user request. Output the ```plan``` JSON block FIRST as text, then proceed with tool calls.',
+      '**PLAN MODE IS FORCED ON.** You MUST call `create_plan` as your FIRST tool call for EVERY user request, then execute the plan steps.',
     );
   }
 
@@ -1190,6 +1185,74 @@ function getConfig(pageContext?: PageContext | null): ChatConfig {
             },
     }),
   );
+
+  // Add plan management tools
+  functionDeclarations.push({
+    name: 'create_plan',
+    description: 'Create an execution plan for a complex multi-step task. Call this FIRST before executing any other tools when the task requires 2+ steps, navigation, or search+analysis.',
+    parametersJsonSchema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string', description: 'The overall goal of the plan' },
+        steps: {
+          type: 'array',
+          description: 'Ordered list of steps to achieve the goal',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Step ID (e.g., "1", "2", "2.1")' },
+              title: { type: 'string', description: 'What this step does' },
+              children: {
+                type: 'array',
+                description: 'Optional sub-steps',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    title: { type: 'string' },
+                  },
+                  required: ['id', 'title'],
+                },
+              },
+            },
+            required: ['id', 'title'],
+          },
+        },
+      },
+      required: ['goal', 'steps'],
+    },
+  });
+
+  functionDeclarations.push({
+    name: 'update_plan',
+    description: 'Update the current execution plan — add/remove/modify steps if the plan needs to change during execution.',
+    parametersJsonSchema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string', description: 'Updated goal (or same as before)' },
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              title: { type: 'string' },
+              children: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: { id: { type: 'string' }, title: { type: 'string' } },
+                  required: ['id', 'title'],
+                },
+              },
+            },
+            required: ['id', 'title'],
+          },
+        },
+      },
+      required: ['goal', 'steps'],
+    },
+  });
 
   return {
     systemInstruction,
