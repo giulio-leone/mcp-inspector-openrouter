@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<!--
+ Copyright 2026 Google LLC
+ SPDX-License-Identifier: Apache-2.0
+-->
+
+<html>
+
+<head>
+  <title>MCP Inspector Settings</title>
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f9fafb;
+      --bg-card: #ffffff;
+      --text: #1f2937;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --success: #10b981;
+      --error: #ef4444;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #3b82f6;
+        --primary-hover: #60a5fa;
+        --bg: #111827;
+        --bg-card: #1f2937;
+        --text: #f3f4f6;
+        --text-secondary: #9ca3af;
+        --border: #374151;
+        --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      min-width: 420px;
+    }
+
+    .options-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .options-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      font-family: monospace;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    button {
+      padding: 9px 18px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-message {
+      margin-top: 10px;
+      font-size: 12px;
+      min-height: 1.2em;
+    }
+
+    .status-success { color: var(--success); }
+    .status-error { color: var(--error); }
+
+    .about-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .about-text a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .about-text a:hover {
+      text-decoration: underline;
+    }
+
+    datalist { font-family: monospace; }
+  </style>
+</head>
+
+<body>
+  <div class="options-header">
+    <span style="font-size:22px">⚙️</span>
+    <h1>MCP Inspector Settings</h1>
+  </div>
+
+  <div class="card">
+    <div class="card-title">API Configuration</div>
+    <div class="form-group">
+      <label for="apiKey">OpenRouter API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
+    </div>
+    <div class="form-group">
+      <button id="saveTestBtn">Save & Test Connection</button>
+      <div id="connectionStatus" class="status-message"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Model</div>
+    <div class="form-group">
+      <label for="modelSelect">Default Model</label>
+      <input type="text" id="modelSelect" list="modelList" placeholder="e.g. google/gemini-2.0-flash-001" />
+      <datalist id="modelList"></datalist>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">About</div>
+    <div class="about-text">
+      <strong>MCP Inspector OpenRouter</strong><br>
+      Version: <span id="versionLabel">—</span><br>
+      <a href="https://github.com/g97iulio1609/mcp-inspector-openrouter" target="_blank" rel="noopener">github.com/g97iulio1609/mcp-inspector-openrouter</a>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+
+</html>

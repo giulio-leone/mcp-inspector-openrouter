@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!--
+ Copyright 2026 Google LLC
+ SPDX-License-Identifier: Apache-2.0
+-->
+
+<html>
+
+<head>
+  <title>Tool Inspector</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Tab bar -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="tools">🔧 Tools</button>
+    <button class="tab-btn" data-tab="chat">💬 Chat</button>
+  </nav>
+
+  <!-- ═══ Tools tab ═══ -->
+  <div class="tab-panel active" id="tab-tools">
+    <div class="section-header-row">
+      <div class="lock-toggle">
+        <label class="toggle-switch">
+          <input type="checkbox" id="lockToggle">
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="lockLabel" class="lock-label live">🔓 Live</span>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="table-container">
+      <table id="resultsTable">
+        <thead>
+          <tr id="tableHeaderRow"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div id="copyToClipboard">
+        <span id="copyAsScriptToolConfig">📝 Copy as ScriptToolConfig</span>
+        <span id="copyAsJSON">📝 Copy as JSON</span>
+      </div>
+    </div>
+
+    <!-- Manual Tool Execution -->
+    <div class="card">
+      <div class="card-title">Manual Tool Execution</div>
+      <div class="form-group">
+        <label for="toolNames">Tool</label>
+        <select id="toolNames"></select>
+      </div>
+      <div class="form-group">
+        <label for="inputArgsText">Input Arguments</label>
+        <textarea id="inputArgsText">{"text": "hello world"}</textarea>
+      </div>
+      <div class="form-group">
+        <button id="executeBtn">Execute Tool</button>
+      </div>
+      <pre id="toolResults"></pre>
+    </div>
+  </div>
+
+  <!-- ═══ Chat tab ═══ -->
+  <div class="tab-panel" id="tab-chat">
+    <!-- API key hint (shown when not configured) -->
+    <div id="apiKeyHint" class="api-key-hint" style="display:none">
+      ⚠️ API key not configured.
+      <a href="#" id="openOptionsLink">Open extension settings</a> to set it up.
+    </div>
+
+    <!-- Conversation selector -->
+    <div class="chat-header">
+      <select id="conversationSelect"></select>
+      <button id="newChatBtn" class="icon-btn" title="New chat">＋</button>
+      <button id="deleteChatBtn" class="icon-btn danger" title="Delete conversation">🗑</button>
+    </div>
+
+    <!-- Chat bubbles -->
+    <div id="chatContainer" class="chat-container"></div>
+
+    <!-- Sticky input area -->
+    <div class="chat-input-area">
+      <div class="chat-input-row">
+        <textarea id="userPromptText" placeholder="Send a message..." rows="2"></textarea>
+        <button id="promptBtn" disabled title="Send">▶</button>
+      </div>
+      <div class="chat-input-actions">
+        <button id="traceBtn" class="secondary small">Copy trace</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security confirmation dialog for mutation-tier inferred tools -->
+  <dialog id="securityDialog" class="security-dialog">
+    <div class="dialog-body">
+      <p class="dialog-title">⚠️ <span id="dialogToolName"></span></p>
+      <p class="dialog-desc" id="dialogDesc"></p>
+      <div class="dialog-actions">
+        <button id="dialogCancel" class="btn-cancel">Cancel</button>
+        <button id="dialogConfirm" class="btn-danger">Execute</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="sidebar.js"></script>
+</body>
+
+</html>
