@@ -2,7 +2,7 @@
  * conversation-controller.ts — Manages conversation CRUD and DOM wiring.
  */
 
-import type { MessageRole } from '../types';
+import type { MessageRole, Message } from '../types';
 import type { OpenRouterChat } from '../services/adapters';
 import * as Store from './chat-store';
 import * as ChatUI from './chat-ui';
@@ -38,7 +38,10 @@ export class ConversationController {
   switchToConversation(convId: string): void {
     this.state.currentConvId = convId;
     const msgs = Store.getMessages(this.state.currentSite, convId);
-    ChatUI.renderConversation(this.chatContainer, msgs);
+    ChatUI.renderConversationWithActions(this.chatContainer, msgs, {
+      onEdit: (i, content) => this.editMessage(i, content),
+      onDelete: (i) => this.deleteMessage(i),
+    });
     this.refreshConversationList();
     this.state.chat = undefined;
   }
@@ -99,6 +102,50 @@ export class ConversationController {
       this.switchToConversation(convs[0].id);
     } else {
       this.refreshConversationList();
+    }
+  }
+
+  /** Edit a message and truncate conversation after it */
+  editMessage(index: number, newContent: string): void {
+    if (!this.state.currentConvId) return;
+    const msgs = Store.editMessageAt(this.state.currentSite, this.state.currentConvId, index, newContent);
+
+    // Reset OpenRouter chat history to match
+    this.rebuildChatHistory(msgs);
+
+    // Re-render
+    ChatUI.renderConversationWithActions(this.chatContainer, msgs, {
+      onEdit: (i, content) => this.editMessage(i, content),
+      onDelete: (i) => this.deleteMessage(i),
+    });
+  }
+
+  /** Delete a message and all messages after it */
+  deleteMessage(index: number): void {
+    if (!this.state.currentConvId) return;
+    const msgs = Store.deleteMessageAt(this.state.currentSite, this.state.currentConvId, index);
+
+    // Reset OpenRouter chat history to match
+    this.rebuildChatHistory(msgs);
+
+    // Re-render
+    ChatUI.renderConversationWithActions(this.chatContainer, msgs, {
+      onEdit: (i, content) => this.editMessage(i, content),
+      onDelete: (i) => this.deleteMessage(i),
+    });
+  }
+
+  /** Rebuild OpenRouter chat history from stored messages */
+  private rebuildChatHistory(msgs: Message[]): void {
+    if (!this.state.chat) return;
+    const chat = this.state.chat as OpenRouterChat;
+    chat.history = [];
+    for (const m of msgs) {
+      if (m.role === 'user') {
+        chat.history.push({ role: 'user', content: m.content });
+      } else if (m.role === 'ai') {
+        chat.history.push({ role: 'assistant', content: m.content });
+      }
     }
   }
 

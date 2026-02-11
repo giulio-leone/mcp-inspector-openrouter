@@ -105,6 +105,108 @@ export function renderConversation(
   }
 }
 
+// ── Message actions (edit/delete) ──
+
+export interface MessageActions {
+  onEdit: (index: number, newContent: string) => void;
+  onDelete: (index: number) => void;
+}
+
+/** Render conversation with edit/delete actions on each message */
+export function renderConversationWithActions(
+  container: HTMLElement,
+  messages: readonly Message[],
+  actions: MessageActions,
+): void {
+  clearChat(container);
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    appendBubbleWithActions(container, msg.role, msg.content, msg, i, actions);
+  }
+}
+
+function appendBubbleWithActions(
+  container: HTMLElement,
+  role: MessageRole,
+  content: string,
+  meta: Partial<Message>,
+  index: number,
+  actions: MessageActions,
+): void {
+  appendBubble(container, role, content, meta);
+
+  const bubble = container.lastElementChild as HTMLElement;
+  if (!bubble) return;
+
+  const actionsBar = document.createElement('div');
+  actionsBar.className = 'bubble-actions';
+
+  // Edit button (only for user messages)
+  if (role === 'user') {
+    const editBtn = document.createElement('button');
+    editBtn.className = 'bubble-action-btn';
+    editBtn.title = 'Edit message';
+    editBtn.textContent = '✏️';
+    editBtn.onclick = (e) => {
+      e.stopPropagation();
+      const currentText = content;
+      const bodyEl = bubble.querySelector('.bubble-body') as HTMLElement;
+      if (!bodyEl) return;
+
+      const textarea = document.createElement('textarea');
+      textarea.className = 'bubble-edit-input';
+      textarea.value = currentText;
+      textarea.rows = Math.min(6, Math.max(2, currentText.split('\n').length));
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'bubble-edit-btns';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '✅ Save';
+      saveBtn.className = 'bubble-edit-save';
+      saveBtn.onclick = () => {
+        const newContent = textarea.value.trim();
+        if (newContent && newContent !== currentText) {
+          actions.onEdit(index, newContent);
+        } else {
+          bodyEl.textContent = currentText;
+          btnRow.remove();
+        }
+      };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = '❌ Cancel';
+      cancelBtn.className = 'bubble-edit-cancel';
+      cancelBtn.onclick = () => {
+        bodyEl.textContent = currentText;
+        btnRow.remove();
+      };
+
+      btnRow.appendChild(saveBtn);
+      btnRow.appendChild(cancelBtn);
+
+      bodyEl.textContent = '';
+      bodyEl.appendChild(textarea);
+      bodyEl.appendChild(btnRow);
+      textarea.focus();
+    };
+    actionsBar.appendChild(editBtn);
+  }
+
+  // Delete button (for all message types)
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'bubble-action-btn';
+  deleteBtn.title = 'Delete this and all subsequent messages';
+  deleteBtn.textContent = '🗑️';
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation();
+    actions.onDelete(index);
+  };
+  actionsBar.appendChild(deleteBtn);
+
+  bubble.appendChild(actionsBar);
+}
+
 /** Populate the conversation selector dropdown */
 export function populateSelector(
   select: HTMLSelectElement,

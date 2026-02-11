@@ -423,3 +423,78 @@
   padding: 4px 0;
   font-style: italic;
 }
+
+/* ── Message Actions (Edit/Delete) ── */
+.bubble-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.bubble:hover .bubble-actions {
+  opacity: 1;
+}
+
+.bubble-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.bubble-action-btn:hover {
+  opacity: 1;
+  background: var(--bg-elevated);
+}
+
+/* Inline edit */
+.bubble-edit-input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+  min-height: 40px;
+}
+
+.bubble-edit-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.bubble-edit-save,
+.bubble-edit-cancel {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--bg-elevated);
+  color: var(--text);
+  transition: background var(--transition-fast);
+}
+
+.bubble-edit-save:hover {
+  background: var(--success, #2ea043);
+  color: white;
+  border-color: transparent;
+}
+
+.bubble-edit-cancel:hover {
+  background: var(--error, #da3633);
+  color: white;
+  border-color: transparent;
+}
