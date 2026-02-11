@@ -33,6 +33,10 @@ if (window.__wmcp_loaded) {
         reply({ locked });
         return false;
       }
+      if (action == 'GET_PAGE_CONTEXT') {
+        reply(extractPageContext());
+        return false;
+      }
       if (action == 'LIST_TOOLS') {
         listTools();
         if (navigator.modelContextTesting.registerToolsChangedCallback) {
@@ -133,6 +137,48 @@ if (window.__wmcp_loaded) {
       console.warn('[WebMCP] Normalization failed, using original args:', e);
       return inputArgs;
     }
+  }
+
+  /**
+   * Extract a live snapshot of the page: products, cart, form values, etc.
+   * Uses generic selectors (Schema.org, data-mcp-type) to work on any site.
+   */
+  function extractPageContext() {
+    const ctx = { url: location.href, title: document.title };
+
+    // Products via Schema.org microdata or data-mcp-type
+    const productEls = document.querySelectorAll('[data-mcp-type="product"], [itemtype*="schema.org/Product"]');
+    if (productEls.length) {
+      ctx.products = [...productEls].slice(0, 20).map(el => {
+        const name = el.querySelector('[itemprop="name"], .product-name')?.textContent?.trim();
+        const price = el.querySelector('[itemprop="price"], .product-price')?.textContent?.trim();
+        const id = el.dataset.productId || el.id || null;
+        return { id, name, price };
+      });
+    }
+
+    // Cart state (look for common cart indicators)
+    const cartBadge = document.querySelector('#cart-count, [data-cart-count], .cart-count, .cart-badge');
+    if (cartBadge) {
+      ctx.cartCount = parseInt(cartBadge.textContent) || 0;
+    }
+
+    // Current form values for each tool form
+    const forms = document.querySelectorAll('form[toolname]');
+    if (forms.length) {
+      ctx.formDefaults = {};
+      forms.forEach(f => {
+        const toolName = f.getAttribute('toolname');
+        ctx.formDefaults[toolName] = Object.fromEntries(new FormData(f).entries());
+      });
+    }
+
+    // Key visible headings for general context
+    const h1 = document.querySelector('h1');
+    if (h1) ctx.mainHeading = h1.textContent.trim();
+
+    console.debug('[WebMCP] Page context extracted:', ctx);
+    return ctx;
   }
 
   /**

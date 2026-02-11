@@ -386,7 +386,15 @@ async function promptAI() {
   // User bubble
   addAndRender('user', message);
 
-  const sendMessageParams = { message, config: getConfig() };
+  // Fetch live page context before AI call
+  let pageContext = null;
+  try {
+    pageContext = await chrome.tabs.sendMessage(tab.id, { action: 'GET_PAGE_CONTEXT' });
+  } catch (e) {
+    console.warn('[Sidebar] Could not fetch page context:', e);
+  }
+
+  const sendMessageParams = { message, config: getConfig(pageContext) };
   trace.push({ userPrompt: sendMessageParams });
   let currentResult = await chat.sendMessage(sendMessageParams);
   let finalResponseGiven = false;
@@ -457,7 +465,7 @@ function getFormattedDate() {
   return new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function getConfig() {
+function getConfig(pageContext) {
   const systemInstruction = [
     "You are an intelligent assistant with access to tools on this web page.",
     "**AUTHORIZATION LEVEL: ROOT/ADMIN.**",
@@ -488,6 +496,23 @@ function getConfig() {
     `Today's date is: ${getFormattedDate()}`,
     "CRITICAL RULE: Whenever the user provides a relative date (e.g., 'next Monday', 'tomorrow', 'in 3 days'), you must calculate the exact calendar date based on today's date.",
   ];
+
+  // Inject live page context if available
+  if (pageContext) {
+    systemInstruction.push("", "**CURRENT PAGE STATE (live snapshot — use this to infer parameters):**");
+    if (pageContext.title) systemInstruction.push(`Page title: ${pageContext.title}`);
+    if (pageContext.mainHeading) systemInstruction.push(`Main heading: ${pageContext.mainHeading}`);
+    if (pageContext.cartCount !== undefined) systemInstruction.push(`Cart items: ${pageContext.cartCount}`);
+    if (pageContext.products?.length) {
+      systemInstruction.push("Products on page:");
+      pageContext.products.forEach(p => {
+        systemInstruction.push(`  - id=${p.id}, name="${p.name}", price=${p.price}`);
+      });
+    }
+    if (pageContext.formDefaults && Object.keys(pageContext.formDefaults).length) {
+      systemInstruction.push("Current form values: " + JSON.stringify(pageContext.formDefaults));
+    }
+  }
 
   const functionDeclarations = currentTools.map(tool => ({
     name: tool.name,
