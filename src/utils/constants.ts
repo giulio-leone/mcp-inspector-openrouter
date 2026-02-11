@@ -102,6 +102,9 @@ export const STORAGE_KEY_MODEL = 'openrouter_model';
 /** Storage key for screenshot toggle */
 export const STORAGE_KEY_SCREENSHOT_ENABLED = 'wmcp_screenshot_enabled';
 
+/** Storage key for plan mode toggle */
+export const STORAGE_KEY_PLAN_MODE = 'wmcp_plan_mode';
+
 // ── Timing ──
 
 /** Debounce delay for DOM mutation observer (ms) */

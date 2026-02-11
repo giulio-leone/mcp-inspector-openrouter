@@ -78,3 +78,5 @@ export type {
   AIProviderConfig,
   AIClassifierConfig,
 } from './ai.types';
+
+export type { PlanStep, PlanStepStatus, Plan, AIPlanResponse } from './plan.types';

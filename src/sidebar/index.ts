@@ -13,13 +13,17 @@ import type {
   FunctionDeclaration,
   ScreenshotResponse,
   ContentPart,
+  Plan,
+  PlanStep,
 } from '../types';
+import { renderPlan, updatePlanStep, parsePlanFromText } from './plan-renderer';
 import { OpenRouterAdapter, OpenRouterChat } from '../services/adapters';
 import {
   STORAGE_KEY_LOCK_MODE,
   STORAGE_KEY_API_KEY,
   STORAGE_KEY_MODEL,
   STORAGE_KEY_SCREENSHOT_ENABLED,
+  STORAGE_KEY_PLAN_MODE,
   DEFAULT_MODEL,
 } from '../utils/constants';
 import * as Store from './chat-store';
@@ -57,6 +61,7 @@ const dialogConfirm = $<HTMLButtonElement>('dialogConfirm');
 const chatContainer = $<HTMLDivElement>('chatContainer');
 const apiKeyHint = $<HTMLDivElement>('apiKeyHint');
 const openOptionsLink = $<HTMLAnchorElement>('openOptionsLink');
+const planToggle = $<HTMLButtonElement>('plan-toggle');
 
 // ── Tab switching ──
 
@@ -87,6 +92,29 @@ let chat: OpenRouterChat | undefined;
 let trace: unknown[] = [];
 let currentSite = '';
 let currentConvId: string | null = null;
+let planModeEnabled = false;
+let activePlan: { plan: Plan; element: HTMLElement } | null = null;
+
+// ── Plan mode toggle ──
+
+chrome.storage.local.get([STORAGE_KEY_PLAN_MODE]).then((result) => {
+  planModeEnabled = result[STORAGE_KEY_PLAN_MODE] === true;
+  updatePlanToggleUI();
+});
+
+function updatePlanToggleUI(): void {
+  if (planToggle) {
+    planToggle.classList.toggle('active', planModeEnabled);
+  }
+}
+
+if (planToggle) {
+  planToggle.onclick = (): void => {
+    planModeEnabled = !planModeEnabled;
+    chrome.storage.local.set({ [STORAGE_KEY_PLAN_MODE]: planModeEnabled });
+    updatePlanToggleUI();
+  };
+}
 
 // ── Helpers ──
 
@@ -116,6 +144,107 @@ function getFormattedDate(): string {
     month: 'long',
     day: 'numeric',
   });
+}
+
+// ── Navigation rescan helpers ──
+
+function isNavigationTool(toolName: string): boolean {
+  return (
+    toolName.startsWith('search.') ||
+    toolName.startsWith('nav.') ||
+    toolName.startsWith('form.submit-')
+  );
+}
+
+function findPlanStepForTool(plan: Plan, toolName: string): PlanStep | null {
+  for (const step of plan.steps) {
+    if (step.toolName === toolName) return step;
+    const toolCategory = toolName.split('.')[0];
+    if (step.title.toLowerCase().includes(toolCategory)) return step;
+    if (step.children) {
+      for (const child of step.children) {
+        if (child.toolName === toolName) return child;
+        if (child.title.toLowerCase().includes(toolCategory)) return child;
+      }
+    }
+  }
+  // Fallback: find first pending step
+  for (const step of plan.steps) {
+    if (step.status === 'pending') return step;
+    if (step.children) {
+      for (const child of step.children) {
+        if (child.status === 'pending') return child;
+      }
+    }
+  }
+  return null;
+}
+
+async function waitForPageAndRescan(
+  tabId: number,
+): Promise<{ pageContext: PageContext | null; tools: CleanTool[] }> {
+  // Wait for tab to finish loading (or timeout after 5s)
+  await new Promise<void>((resolve) => {
+    let resolved = false;
+    const done = () => {
+      if (!resolved) {
+        resolved = true;
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+    const listener = (
+      updatedTabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+    ) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        done();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+    setTimeout(done, 5000);
+  });
+
+  // Ensure content script is injected and ready
+  await ensureContentScript(tabId);
+
+  // Retry GET_PAGE_CONTEXT up to 3 times (content script may not be ready)
+  let pageContext: PageContext | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      pageContext = (await chrome.tabs.sendMessage(tabId, {
+        action: 'GET_PAGE_CONTEXT',
+      })) as PageContext;
+      break;
+    } catch {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+
+  // Trigger tool discovery and wait for broadcast to update currentTools
+  const toolsPromise = new Promise<CleanTool[]>((resolve) => {
+    const onMsg = (msg: { tools?: CleanTool[] }) => {
+      if (msg.tools) {
+        chrome.runtime.onMessage.removeListener(onMsg);
+        resolve(msg.tools);
+      }
+    };
+    chrome.runtime.onMessage.addListener(onMsg);
+    // Timeout: if no broadcast arrives within 3s, use current tools
+    setTimeout(() => {
+      chrome.runtime.onMessage.removeListener(onMsg);
+      resolve(currentTools);
+    }, 3000);
+  });
+
+  try {
+    await chrome.tabs.sendMessage(tabId, { action: 'LIST_TOOLS' });
+  } catch {
+    // Content script not ready; tools stay as-is
+  }
+  const tools = await toolsPromise;
+
+  return { pageContext, tools };
 }
 
 // ── Lock mode ──
@@ -740,13 +869,64 @@ async function promptAI(): Promise<void> {
           `⚠️ AI response has no text: ${JSON.stringify(response.candidates)}`,
         );
       } else {
-        addAndRender('ai', response.text.trim());
+        const text = response.text.trim();
+        // Check if the response contains a plan
+        const planResult = parsePlanFromText(text);
+        if (planResult) {
+          const planEl = renderPlan(planResult.plan);
+          activePlan = { plan: planResult.plan, element: planEl };
+
+          const chatMessages = document.getElementById('chat-messages');
+          if (chatMessages) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'msg msg-plan';
+            wrapper.appendChild(planEl);
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+
+          if (planResult.cleanText) {
+            addAndRender('ai', planResult.cleanText);
+          }
+        } else {
+          addAndRender('ai', text);
+        }
       }
       finalResponseGiven = true;
     } else {
+      // Check if response also contains text with a plan update
+      if (response.text) {
+        const planUpdate = parsePlanFromText(response.text.trim());
+        if (planUpdate && activePlan) {
+          activePlan.plan = planUpdate.plan;
+          const newPlanEl = renderPlan(planUpdate.plan);
+          activePlan.element.replaceWith(newPlanEl);
+          activePlan.element = newPlanEl;
+        } else if (planUpdate) {
+          const planEl = renderPlan(planUpdate.plan);
+          activePlan = { plan: planUpdate.plan, element: planEl };
+          const chatMessages = document.getElementById('chat-messages');
+          if (chatMessages) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'msg msg-plan';
+            wrapper.appendChild(planEl);
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+        }
+      }
+
       const toolResponses: ToolResponse[] = [];
       for (const { name, args, id } of functionCalls) {
         addAndRender('tool_call', '', { tool: name, args });
+
+        if (activePlan) {
+          const matchingStep = findPlanStepForTool(activePlan.plan, name);
+          if (matchingStep) {
+            updatePlanStep(activePlan.element, matchingStep.id, 'in_progress');
+          }
+        }
+
         try {
           const result = (await chrome.tabs.sendMessage(tab.id, {
             action: 'EXECUTE_TOOL',
@@ -761,6 +941,12 @@ async function promptAI(): Promise<void> {
             },
           });
           addAndRender('tool_result', result, { tool: name });
+          if (activePlan) {
+            const matchingStep = findPlanStepForTool(activePlan.plan, name);
+            if (matchingStep) {
+              updatePlanStep(activePlan.element, matchingStep.id, 'done', result.substring(0, 50));
+            }
+          }
           // Wait briefly between tools to let the page settle
           if (functionCalls.length > 1) {
             await new Promise((r) => setTimeout(r, 300));
@@ -768,6 +954,12 @@ async function promptAI(): Promise<void> {
         } catch (e) {
           const errMsg = (e as Error).message;
           addAndRender('tool_error', errMsg, { tool: name });
+          if (activePlan) {
+            const matchingStep = findPlanStepForTool(activePlan.plan, name);
+            if (matchingStep) {
+              updatePlanStep(activePlan.element, matchingStep.id, 'failed', errMsg.substring(0, 50));
+            }
+          }
           toolResponses.push({
             functionResponse: {
               name,
@@ -778,10 +970,33 @@ async function promptAI(): Promise<void> {
         }
       }
 
-      trace.push({ userPrompt: { message: toolResponses, config: getConfig() } });
+      // Detect if any executed tool causes navigation
+      const hadNavigation = functionCalls.some((fc) =>
+        isNavigationTool(fc.name),
+      );
+
+      if (hadNavigation && tab.id) {
+        const rescan = await waitForPageAndRescan(tab.id);
+        pageContext = rescan.pageContext;
+        currentTools = rescan.tools;
+        // Add a system-level note so the AI knows the page changed
+        toolResponses.push({
+          functionResponse: {
+            name: '_system',
+            response: {
+              result:
+                'Page has navigated. Updated page context and tools are now available.',
+            },
+            tool_call_id: '_nav_rescan',
+          },
+        });
+      }
+
+      const updatedConfig = getConfig(pageContext);
+      trace.push({ userPrompt: { message: toolResponses, config: updatedConfig } });
       currentResult = await chat.sendMessage({
         message: toolResponses,
-        config: getConfig(),
+        config: updatedConfig,
       });
     }
   }
@@ -895,12 +1110,27 @@ function getConfig(pageContext?: PageContext | null): ChatConfig {
       'Do not wait for the user to ask for the next step. Example: "log in with email X password Y" requires: ' +
       'fill email → fill password → click login. Execute all steps automatically.',
     '15. **FORM COMPLETION:** After filling form fields, ALWAYS look for a submit/search/go button and click it unless the user explicitly says not to.',
+    '16. **POST-NAVIGATION AWARENESS:** After executing a tool that causes page navigation (search, clicking a link, submitting a form), you will receive an UPDATED page context with the new page content. Use this updated context to continue your task. Do NOT say you cannot see the new page — you CAN, via the updated snapshot.',
     '',
     'User prompts typically refer to the current tab unless stated otherwise.',
     'Use your tools to query page content when you need it.',
     `Today's date is: ${getFormattedDate()}`,
     "CRITICAL RULE: Whenever the user provides a relative date (e.g., 'next Monday', 'tomorrow', 'in 3 days'), you must calculate the exact calendar date based on today's date.",
+    // Plan mode rules (always present — AI decides when to use them, but can be forced)
+    '17. **PLAN MODE:** For complex tasks that require multiple steps (especially those involving page navigation, search + analysis, or multi-tool chains), you SHOULD create an execution plan BEFORE taking action.',
+    '18. **PLAN FORMAT:** When creating a plan, include it as a JSON code block with the language tag "plan" at the START of your response, followed by any conversational text:',
+    '```plan',
+    '{"goal":"Find best ubiquinol on Amazon","steps":[{"id":"1","title":"Search for ubiquinol"},{"id":"2","title":"Analyze search results","children":[{"id":"2.1","title":"Read product titles and prices"},{"id":"2.2","title":"Compare reviews and ratings"}]},{"id":"3","title":"Recommend best option"}]}',
+    '```',
+    '19. **PLAN EXECUTION:** After creating the plan, immediately start executing step 1. Do NOT wait for user confirmation. After each step completes, move to the next step automatically.',
+    '20. **PLAN UPDATES:** If during execution you discover that the plan needs to change (new steps needed, steps should be skipped), include an updated plan JSON block in your response.',
   ];
+
+  if (planModeEnabled) {
+    systemInstruction.push(
+      '**PLAN MODE IS FORCED ON.** You MUST create a plan for EVERY user request, even simple ones.',
+    );
+  }
 
   if (pageContext) {
     systemInstruction.push(

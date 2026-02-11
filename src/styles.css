@@ -498,6 +498,159 @@ tbody.prettify pre { white-space: pre-wrap; }
   letter-spacing: 0.03em;
 }
 
+/* ── Plan Mode ── */
+.plan-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: 0;
+  margin: 8px 0;
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.plan-block--collapsed .plan-steps {
+  display: none;
+}
+
+.plan-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+
+.plan-icon {
+  font-size: 14px;
+}
+
+.plan-goal {
+  flex: 1;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.plan-status-badge {
+  font-size: 12px;
+}
+
+.plan-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.plan-toggle-btn:hover {
+  background: var(--bg-hover);
+}
+
+.plan-steps {
+  padding: 6px 0;
+}
+
+.plan-step {
+  transition: opacity 0.2s;
+}
+
+.plan-step--done {
+  opacity: 0.7;
+}
+
+.plan-step--failed .plan-step-title {
+  text-decoration: line-through;
+  color: var(--error, #ef4444);
+}
+
+.plan-step--in_progress {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.plan-step-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+}
+
+.plan-step--depth-0 > .plan-step-row { padding-left: 10px; }
+.plan-step--depth-1 > .plan-step-row { padding-left: 26px; }
+.plan-step--depth-2 > .plan-step-row { padding-left: 42px; }
+.plan-step--depth-3 > .plan-step-row { padding-left: 58px; }
+
+.plan-step-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.plan-step-title {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.plan-step-detail {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-left: auto;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-step-children {
+  border-left: 1px dashed var(--border);
+  margin-left: 16px;
+}
+
+/* Plan toggle button in chat header */
+.plan-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+
+.plan-mode-toggle:hover {
+  border-color: var(--primary);
+}
+
+.plan-mode-toggle.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.plan-mode-toggle .toggle-icon {
+  font-size: 12px;
+}
+
+/* Spinner animation for in-progress icon */
+.plan-step--in_progress .plan-step-icon {
+  animation: plan-spin 1s linear infinite;
+}
+
+@keyframes plan-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ── Chat ── */
 .chat-header {
   display: flex;
