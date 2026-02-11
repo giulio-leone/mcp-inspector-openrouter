@@ -21,6 +21,7 @@ import {
   SPA_NAVIGATION_DEBOUNCE_MS,
   MAX_PAGE_CONTEXT_PRODUCTS,
   SECURITY_TIERS,
+  STORAGE_KEY_YOLO_MODE,
 } from '../utils/constants';
 import { getFormValues } from '../utils/dom';
 import { ScannerRegistry } from './scanners';
@@ -54,6 +55,17 @@ if (window.__wmcp_loaded) {
       args: Record<string, unknown>;
     }
   >();
+
+  // ── YOLO mode (cached, updated on storage change) ──
+  let yoloMode = true; // Default: YOLO on
+  chrome.storage.local.get([STORAGE_KEY_YOLO_MODE]).then((r) => {
+    yoloMode = r[STORAGE_KEY_YOLO_MODE] !== false;
+  });
+  chrome.storage.onChanged.addListener((changes) => {
+    if (STORAGE_KEY_YOLO_MODE in changes) {
+      yoloMode = changes[STORAGE_KEY_YOLO_MODE].newValue !== false;
+    }
+  });
 
   // ── Message handler ──
   chrome.runtime.onMessage.addListener(
@@ -114,7 +126,7 @@ if (window.__wmcp_loaded) {
               const tier = getSecurityTier(inferredTool);
               const tierInfo = SECURITY_TIERS[tier];
 
-              if (!tierInfo.autoExecute) {
+              if (!tierInfo.autoExecute && !yoloMode) {
                 // Queue for sidebar confirmation
                 const promise = new Promise<unknown>((resolve, reject) => {
                   pendingConfirmations.set(toolName, {

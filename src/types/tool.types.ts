@@ -29,7 +29,7 @@ export type SecurityTierMap = Readonly<Record<SecurityTier, SecurityTierInfo>>;
 
 // ── Tool Categories ──
 
-/** All 12 scanner categories from the inference engine */
+/** All 13 scanner categories from the inference engine */
 export type ToolCategory =
   | 'form'
   | 'navigation'
@@ -42,7 +42,8 @@ export type ToolCategory =
   | 'schema-org'
   | 'richtext'
   | 'file-upload'
-  | 'social-action';
+  | 'social-action'
+  | 'chatbot';
 
 // ── Tool Schema ──
 

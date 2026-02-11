@@ -1,5 +1,5 @@
 /**
- * Scanner Registry — registers all 12 category scanners, runs them
+ * Scanner Registry — registers all 13 category scanners, runs them
  * in priority order, deduplicates results, and supports cache invalidation.
  */
 
@@ -18,6 +18,7 @@ import { EcommerceScanner } from './ecommerce-scanner';
 import { AuthScanner } from './auth-scanner';
 import { PageStateScanner } from './page-state-scanner';
 import { SchemaOrgScanner } from './schema-org-scanner';
+import { ChatbotScanner } from './chatbot-scanner';
 
 export { BaseScanner, collectShadowRoots } from './base-scanner';
 export { claimElement, isElementClaimed, isSocialKeyword } from './base-scanner';
@@ -36,6 +37,7 @@ const SCANNER_MAP: ReadonlyMap<ToolCategory, BaseScanner> = new Map<ToolCategory
   ['auth', new AuthScanner()],
   ['page-state', new PageStateScanner()],
   ['schema-org', new SchemaOrgScanner()],
+  ['chatbot', new ChatbotScanner()],
 ]);
 
 export class ScannerRegistry {
@@ -51,7 +53,7 @@ export class ScannerRegistry {
   }
 
   /**
-   * Run all 12 scanners on a root node (+ open Shadow DOM roots).
+   * Run all 13 scanners on a root node (+ open Shadow DOM roots).
    * Deduplicates by tool name, keeping the highest-confidence entry.
    */
   scanAll(root: Document | Element | ShadowRoot = document): Tool[] {

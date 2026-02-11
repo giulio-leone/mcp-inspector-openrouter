@@ -42,7 +42,7 @@ export const SecurityTierLevel = {
 
 // ── Scanner Categories ──
 
-/** All 12 scanner categories in priority order (specialized before generic) */
+/** All 13 scanner categories in priority order (specialized before generic) */
 export const SCANNER_CATEGORIES: readonly ToolCategory[] = [
   'form',
   'navigation',
@@ -56,6 +56,7 @@ export const SCANNER_CATEGORIES: readonly ToolCategory[] = [
   'auth',
   'page-state',
   'schema-org',
+  'chatbot',
 ] as const;
 
 // ── AI Classifier ──
@@ -104,6 +105,9 @@ export const STORAGE_KEY_SCREENSHOT_ENABLED = 'wmcp_screenshot_enabled';
 
 /** Storage key for plan mode toggle */
 export const STORAGE_KEY_PLAN_MODE = 'wmcp_plan_mode';
+
+/** Key for YOLO mode (auto-execute all tools without confirmation) */
+export const STORAGE_KEY_YOLO_MODE = 'wmcp_yolo_mode';
 
 // ── Timing ──
 

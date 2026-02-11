@@ -928,11 +928,12 @@ async function promptAI(): Promise<void> {
         }
 
         try {
-          const result = (await chrome.tabs.sendMessage(tab.id, {
+          const rawResult = await chrome.tabs.sendMessage(tab.id, {
             action: 'EXECUTE_TOOL',
             name,
             inputArgs: JSON.stringify(args),
-          })) as string;
+          });
+          const result = typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult);
           toolResponses.push({
             functionResponse: {
               name,
@@ -944,7 +945,7 @@ async function promptAI(): Promise<void> {
           if (activePlan) {
             const matchingStep = findPlanStepForTool(activePlan.plan, name);
             if (matchingStep) {
-              updatePlanStep(activePlan.element, matchingStep.id, 'done', result.substring(0, 50));
+              updatePlanStep(activePlan.element, matchingStep.id, 'done', String(result).substring(0, 50));
             }
           }
           // Wait briefly between tools to let the page settle

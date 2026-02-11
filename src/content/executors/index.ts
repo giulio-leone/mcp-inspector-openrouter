@@ -18,6 +18,7 @@ import { SchemaOrgExecutor } from './schema-org-executor';
 import { RichTextExecutor } from './richtext-executor';
 import { FileUploadExecutor } from './file-upload-executor';
 import { SocialExecutor } from './social-executor';
+import { ChatbotExecutor } from './chatbot-executor';
 
 export { type ExecutionResult } from './base-executor';
 export { BaseExecutor } from './base-executor';
@@ -39,6 +40,7 @@ export class ExecutorRegistry {
       new RichTextExecutor(),
       new FileUploadExecutor(),
       new SocialExecutor(),
+      new ChatbotExecutor(),
     ];
 
     this.executors = new Map(all.map((e) => [e.category, e]));

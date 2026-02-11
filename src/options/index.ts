@@ -8,6 +8,7 @@ import {
   STORAGE_KEY_API_KEY,
   STORAGE_KEY_MODEL,
   STORAGE_KEY_SCREENSHOT_ENABLED,
+  STORAGE_KEY_YOLO_MODE,
   DEFAULT_MODEL,
 } from '../utils/constants';
 
@@ -23,6 +24,7 @@ const modelSelect = $<HTMLInputElement>('modelSelect');
 const modelList = $<HTMLDataListElement>('modelList');
 const versionLabel = $<HTMLSpanElement>('versionLabel');
 const screenshotToggle = $<HTMLInputElement>('screenshotToggle');
+const yoloToggle = $<HTMLInputElement>('yoloToggle');
 
 // ── Load saved settings ──
 
@@ -31,6 +33,7 @@ async function loadSettings(): Promise<void> {
     STORAGE_KEY_API_KEY,
     STORAGE_KEY_MODEL,
     STORAGE_KEY_SCREENSHOT_ENABLED,
+    STORAGE_KEY_YOLO_MODE,
   ]);
   const savedKey = (result[STORAGE_KEY_API_KEY] as string) ?? '';
   const savedModel =
@@ -39,6 +42,7 @@ async function loadSettings(): Promise<void> {
   if (savedKey) apiKeyInput.value = savedKey;
   modelSelect.value = savedModel;
   screenshotToggle.checked = !!(result[STORAGE_KEY_SCREENSHOT_ENABLED] as boolean);
+  yoloToggle.checked = result[STORAGE_KEY_YOLO_MODE] !== false; // Default: true
 
   // Load version from manifest
   const manifest = chrome.runtime.getManifest();
@@ -130,6 +134,14 @@ modelSelect.addEventListener('input', () => {
 screenshotToggle.addEventListener('change', () => {
   void chrome.storage.local.set({
     [STORAGE_KEY_SCREENSHOT_ENABLED]: screenshotToggle.checked,
+  });
+});
+
+// ── YOLO mode toggle ──
+
+yoloToggle.addEventListener('change', () => {
+  void chrome.storage.local.set({
+    [STORAGE_KEY_YOLO_MODE]: yoloToggle.checked,
   });
 });
 
