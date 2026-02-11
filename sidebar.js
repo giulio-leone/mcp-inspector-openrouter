@@ -163,35 +163,79 @@ function addAndRender(role, content, meta = {}) {
 })();
 
 // ── Tab change listeners ──
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === 'loading') {
-    currentTools = [];
+
+/** Rebuild the AI chat's in-memory history from stored conversation messages */
+function rebuildChatHistory() {
+  if (!chat || !currentConvId || !currentSite) return;
+  const msgs = Store.getMessages(currentSite, currentConvId);
+  // Clear the internal history and replay stored messages
+  chat.history = [];
+  for (const m of msgs) {
+    if (m.role === 'user') {
+      chat.history.push({ role: 'user', content: m.content });
+    } else if (m.role === 'assistant') {
+      chat.history.push({ role: 'assistant', content: m.content });
+    }
+    // Skip error/system messages — they aren't part of the API conversation
+  }
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'loading') return;
+  const newSite = Store.siteKey(tab.url);
+  const sameSite = newSite === currentSite;
+
+  // Always refresh tools on navigation
+  currentTools = [];
+  tbody.innerHTML = '<tr><td colspan="100%"><i>Refreshing...</i></td></tr>';
+  toolNames.innerHTML = '';
+
+  if (sameSite) {
+    // Same site → keep chat context, just refresh tools
+    // chat is preserved, history intact
+  } else {
+    // Different site → full reset
+    currentSite = newSite;
     chat = undefined;
-    tbody.innerHTML = '<tr><td colspan="100%"><i>Refreshing...</i></td></tr>';
-    toolNames.innerHTML = '';
+    currentConvId = null;
+    ChatUI.clearChat();
+    const convs = Store.listConversations(currentSite);
+    if (convs.length > 0) {
+      switchToConversation(convs[0].id);
+    } else {
+      refreshConversationList();
+    }
   }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   currentTools = [];
-  chat = undefined;
   tbody.innerHTML = '<tr><td colspan="100%"><i>Switched tab, refreshing tools...</i></td></tr>';
   toolNames.innerHTML = '';
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    currentSite = Store.siteKey(tab.url);
+    const newSite = Store.siteKey(tab.url);
+    const sameSite = newSite === currentSite;
+
+    if (!sameSite) {
+      currentSite = newSite;
+      chat = undefined;
+      currentConvId = null;
+      ChatUI.clearChat();
+    }
+
     await ensureContentScript(activeInfo.tabId);
     await chrome.tabs.sendMessage(activeInfo.tabId, { action: 'LIST_TOOLS' });
     const locked = lockToggle.checked;
     await chrome.tabs.sendMessage(activeInfo.tabId, { action: 'SET_LOCK_MODE', inputArgs: { locked } });
-    // Load conversations for new site
-    const convs = Store.listConversations(currentSite);
-    currentConvId = null;
-    ChatUI.clearChat();
-    if (convs.length > 0) {
-      switchToConversation(convs[0].id);
-    } else {
-      refreshConversationList();
+
+    if (!sameSite) {
+      const convs = Store.listConversations(currentSite);
+      if (convs.length > 0) {
+        switchToConversation(convs[0].id);
+      } else {
+        refreshConversationList();
+      }
     }
   } catch { }
 });
@@ -429,7 +473,18 @@ async function promptAI() {
   const tab = await getCurrentTab();
   ensureConversation();
 
-  chat ??= genAI.chats.create({ model: localStorage.getItem('openrouter_model') });
+  chat ??= (() => {
+    const c = genAI.chats.create({ model: localStorage.getItem('openrouter_model') });
+    // Hydrate with existing conversation so the AI has context from previous messages
+    if (currentConvId && currentSite) {
+      const msgs = Store.getMessages(currentSite, currentConvId);
+      for (const m of msgs) {
+        if (m.role === 'user') c.history.push({ role: 'user', content: m.content });
+        else if (m.role === 'assistant') c.history.push({ role: 'assistant', content: m.content });
+      }
+    }
+    return c;
+  })();
 
   const message = userPromptText.value;
   userPromptText.value = '';

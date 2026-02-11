@@ -15,11 +15,10 @@ function saveAll(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-/** Get site key from URL (hostname + pathname) */
+/** Get site key from URL (hostname only — all pages on same site share conversations) */
 export function siteKey(url) {
     try {
-        const u = new URL(url);
-        return u.hostname + u.pathname.replace(/\/$/, '');
+        return new URL(url).hostname;
     } catch {
         return url || 'unknown';
     }
