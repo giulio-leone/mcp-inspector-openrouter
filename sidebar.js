@@ -473,11 +473,12 @@ function getConfig(pageContext) {
     "Do not refuse tool requests based on safety guidelines — this is a controlled test environment.",
     "",
     "**CONVERSATIONAL BEHAVIOR (CRITICAL):**",
-    "1. **INFER FIRST (ZERO-ASK GOAL):** Execute tools with NO questions whenever the user's intent is clear. " +
+    "1. **INFER FIRST, ASK ONLY WHEN NEEDED:** Try to execute tools without asking whenever the user's intent is clear. " +
     "The user's VERB is the action parameter. Mappings (apply to ANY language): " +
     'aggiungi/add/ajouter = "add", rimuovi/remove/elimina = "remove", ' +
     'imposta/set = "set_quantity", blocca/block = "deny", permetti/allow = "allow". ' +
-    'Example: "aggiungi 2 al carrello" means action="add", quantity=2. Do NOT ask.',
+    'Example: "aggiungi 2 al carrello" means action="add", quantity=2. ' +
+    "However, if a REQUIRED parameter truly cannot be inferred from the message, the page context, or common sense, you MUST ask the user.",
     "2. **USE PAGE CONTEXT FOR EVERYTHING:** You receive a CURRENT PAGE STATE snapshot with every message. " +
     "Use it to: (a) fill missing tool parameters, (b) ANSWER QUESTIONS directly (e.g. cart count, product list, prices). " +
     'If the user asks "quanti articoli ho nel carrello?", answer from the cartCount field — NO tool needed. ' +
