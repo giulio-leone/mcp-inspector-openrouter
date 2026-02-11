@@ -68,6 +68,7 @@ button:hover {
   max-height: 400px;
   display: block;
 }
+
 .table-container:has(tbody.prettify) {
   max-height: fit-content;
 }
@@ -96,6 +97,7 @@ th {
 tr:last-child td {
   border-bottom: none;
 }
+
 tr:nth-child(even) {
   background-color: #fcfcfc;
 }
@@ -109,20 +111,51 @@ tr:nth-child(even) {
   margin-bottom: 10px;
 }
 
+.border-top {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status-message {
+  margin-top: 8px;
+  font-size: 12px;
+  min-height: 1.2em;
+}
+
+.status-success {
+  color: #10b981;
+}
+
+.status-error {
+  color: #ef4444;
+}
+
 label {
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
-  font-weight: 600; /* Matches th weight */
+  font-weight: 600;
+  /* Matches th weight */
   color: #333;
 }
 
 select,
-textarea, input {
+textarea,
+input {
   width: 100%;
-  padding: 8px 10px; /* Matches button padding logic */
-  border: 1px solid #e5e7eb; /* Matches table border */
-  border-radius: 6px; /* Matches button/container radius */
+  padding: 8px 10px;
+  /* Matches button padding logic */
+  border: 1px solid #e5e7eb;
+  /* Matches table border */
+  border-radius: 6px;
+  /* Matches button/container radius */
   background-color: white;
   font-family: monospace;
   font-size: 13px;
@@ -151,12 +184,14 @@ select {
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px;
-  padding-right: 30px; /* Make space for the arrow */
+  padding-right: 30px;
+  /* Make space for the arrow */
   cursor: pointer;
 }
 
 textarea {
-  resize: vertical; /* Allow height resize only */
+  resize: vertical;
+  /* Allow height resize only */
   min-height: 70px;
   line-height: 1.4;
 }
@@ -197,6 +232,7 @@ button:disabled {
 tbody pre {
   white-space: normal;
 }
+
 tbody.prettify pre {
   white-space: pre-wrap;
 }
@@ -227,7 +263,8 @@ tbody.prettify pre {
     color: #e5e5e5;
   }
 
-  h2, label {
+  h2,
+  label {
     color: #e5e5e5;
   }
 
@@ -269,16 +306,19 @@ tbody.prettify pre {
   }
 
   th {
-    background-color: #262626; /* Darker header */
+    background-color: #262626;
+    /* Darker header */
     color: #fff;
   }
 
   tr:nth-child(even) {
-    background-color: #232323; /* Subtle zebra striping */
+    background-color: #232323;
+    /* Subtle zebra striping */
   }
 
   button {
-    background-color: #2563eb; /* Keep brand color, or shift to #3b82f6 */
+    background-color: #2563eb;
+    /* Keep brand color, or shift to #3b82f6 */
     color: #fff;
   }
 
@@ -287,7 +327,8 @@ tbody.prettify pre {
   }
 
   .secondary {
-    color: #60a5fa; /* Lighter blue for text readability */
+    color: #60a5fa;
+    /* Lighter blue for text readability */
     outline-color: #60a5fa;
   }
 
@@ -310,7 +351,23 @@ tbody.prettify pre {
     border: 1px solid #333;
   }
 
+  .border-top {
+    border-top-color: #333;
+  }
+
+  .button-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .status-message {
+    margin-top: 8px;
+    font-size: 12px;
+    min-height: 1.2em;
+  }
+
   #status {
-    color: #f87171; /* Lighter red for readability on dark */
+    color: #f87171;
   }
 }

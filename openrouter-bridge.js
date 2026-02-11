@@ -15,6 +15,20 @@ export class OpenRouterBridge {
         };
     }
 
+    async getModels() {
+        const response = await fetch('https://openrouter.ai/api/v1/models', {
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`
+            }
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || response.statusText);
+        }
+        const data = await response.json();
+        return data.data;
+    }
+
     async _callOpenRouter(model, contents, tools = []) {
         const messages = this._formatMessages(contents);
         const body = {
@@ -131,19 +145,26 @@ class OpenRouterChat {
         }
 
         const data = await res.json();
+        if (!data.choices || data.choices.length === 0) {
+            throw new Error('OpenRouter returned an empty response (no choices).');
+        }
+
         const assistantMessage = data.choices[0].message;
+        if (!assistantMessage) {
+            throw new Error('OpenRouter response choice missing message.');
+        }
 
         // Store assistant message in history
         this.history.push(assistantMessage);
 
         return {
-            text: assistantMessage.content,
+            text: assistantMessage.content || '',
             functionCalls: assistantMessage.tool_calls?.map(tc => ({
                 name: tc.function.name,
                 args: JSON.parse(tc.function.arguments),
-                id: tc.id // Important for subsequent response
+                id: tc.id
             })),
-            candidates: [data.choices[0]] // Keep compatibility
+            candidates: data.choices
         };
     }
 }

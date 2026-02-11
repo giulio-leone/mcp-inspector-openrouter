@@ -55,8 +55,16 @@
       <div class="form-group">
         <button id="promptBtn" disabled>Send</button>
         <button id="resetBtn" class="secondary" disabled>Reset</button>
-        <button id="apiKeyBtn" class="secondary">Set OpenRouter API key</button>
         <button id="traceBtn" class="secondary">Copy trace</button>
+      </div>
+
+      <div class="form-group border-top">
+        <label for="apiKey">OpenRouter API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
+        <div class="button-row">
+          <button id="saveSettingsBtn" class="secondary">Save & Test Connection</button>
+        </div>
+        <div id="connectionStatus" class="status-message"></div>
       </div>
 
       <pre id="promptResults"></pre>

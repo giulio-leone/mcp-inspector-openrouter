@@ -12,27 +12,39 @@ chrome.runtime.onMessage.addListener(({ action, name, inputArgs }, _, reply) => 
         'Error: You must run Chrome with the "Enables WebMCP for Testing" flag enabled.',
       );
     }
+    if (action == 'PING') {
+      reply({ status: 'pong' });
+      return false;
+    }
     if (action == 'LIST_TOOLS') {
       listTools();
-      navigator.modelContextTesting.registerToolsChangedCallback(listTools);
+      if (navigator.modelContextTesting.registerToolsChangedCallback) {
+        navigator.modelContextTesting.registerToolsChangedCallback(listTools);
+      }
+      reply({ queued: true });
+      return false;
     }
     if (action == 'EXECUTE_TOOL') {
-      console.debug(`[WebMCP] Execute tool "${name}" with`, inputArgs);
+      // Normalize AI args against actual HTML form values (case-insensitive)
+      const normalizedArgs = normalizeToolArgs(name, inputArgs);
+      console.debug(`[WebMCP] Execute tool "${name}" with`, normalizedArgs, '(original:', inputArgs, ')');
       let targetFrame, loadPromise;
       // Check if this tool is associated with a form target
       const formTarget = document.querySelector(`form[toolname="${name}"]`)?.target;
       if (formTarget) {
         targetFrame = document.querySelector(`[name=${formTarget}]`);
-        loadPromise = new Promise((resolve) => {
-          targetFrame.addEventListener('load', resolve, { once: true });
-        });
+        if (targetFrame) {
+          loadPromise = new Promise((resolve) => {
+            targetFrame.addEventListener('load', resolve, { once: true });
+          });
+        }
       }
-      // Execute the experimental tool
-      const promise = navigator.modelContextTesting.executeTool(name, inputArgs);
+      // Execute the experimental tool with normalized args
+      const promise = navigator.modelContextTesting.executeTool(name, normalizedArgs);
       promise
         .then(async (result) => {
           // If result is null and we have a target frame, wait for the frame to reload.
-          if (result === null && targetFrame) {
+          if (result === null && targetFrame && loadPromise) {
             console.debug(`[WebMCP] Waiting for form target ${targetFrame} to load`);
             await loadPromise;
             console.debug('[WebMCP] Get cross document script tool result');
@@ -41,7 +53,10 @@ chrome.runtime.onMessage.addListener(({ action, name, inputArgs }, _, reply) => 
           }
           reply(result);
         })
-        .catch(({ message }) => reply(JSON.stringify(message)));
+        .catch((err) => {
+          console.error('[WebMCP] Execution error:', err);
+          reply(JSON.stringify(err.message || err));
+        });
       return true;
     }
     if (action == 'GET_CROSS_DOCUMENT_SCRIPT_TOOL_RESULT') {
@@ -54,6 +69,54 @@ chrome.runtime.onMessage.addListener(({ action, name, inputArgs }, _, reply) => 
     chrome.runtime.sendMessage({ message });
   }
 });
+
+/**
+ * Normalize AI-provided tool arguments against actual HTML form values.
+ * Performs case-insensitive matching for select options and radio buttons,
+ * so the AI can send "ALLOW" and the extension will correct it to "allow".
+ */
+function normalizeToolArgs(toolName, inputArgs) {
+  try {
+    const args = typeof inputArgs === 'string' ? JSON.parse(inputArgs) : inputArgs;
+    const form = document.querySelector(`form[toolname="${toolName}"]`);
+    if (!form) return typeof inputArgs === 'string' ? inputArgs : JSON.stringify(inputArgs);
+
+    const normalized = { ...args };
+
+    for (const [key, value] of Object.entries(normalized)) {
+      if (typeof value !== 'string') continue;
+
+      // Check <select> options
+      const select = form.querySelector(`select[name="${key}"]`);
+      if (select) {
+        const match = [...select.options].find(
+          opt => opt.value.toLowerCase() === value.toLowerCase()
+        );
+        if (match) {
+          normalized[key] = match.value;
+          continue;
+        }
+      }
+
+      // Check radio buttons
+      const radios = form.querySelectorAll(`input[type="radio"][name="${key}"]`);
+      if (radios.length > 0) {
+        const match = [...radios].find(
+          r => r.value.toLowerCase() === value.toLowerCase()
+        );
+        if (match) {
+          normalized[key] = match.value;
+          continue;
+        }
+      }
+    }
+
+    return JSON.stringify(normalized);
+  } catch (e) {
+    console.warn('[WebMCP] Normalization failed, using original args:', e);
+    return inputArgs;
+  }
+}
 
 function listTools() {
   const tools = navigator.modelContextTesting.listTools();
