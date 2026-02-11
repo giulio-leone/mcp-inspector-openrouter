@@ -135,8 +135,41 @@ if (window.__wmcp_loaded) {
     }
   }
 
+  /**
+   * Enrich tool schemas with enum values from <select> and radio inputs.
+   * Chrome's WebMCP API omits enum arrays, so the AI can't know valid values.
+   */
+  function enrichToolSchemas(tools) {
+    return tools.map(tool => {
+      const form = document.querySelector(`form[toolname="${tool.name}"]`);
+      if (!form || !tool.inputSchema) return tool;
+
+      let schema;
+      try { schema = JSON.parse(tool.inputSchema); } catch { return tool; }
+      if (!schema.properties) return tool;
+
+      for (const [propName, propDef] of Object.entries(schema.properties)) {
+        // <select> → enum from option values
+        const select = form.querySelector(`select[name="${propName}"]`);
+        if (select) {
+          const vals = [...select.options].map(o => o.value).filter(Boolean);
+          if (vals.length) propDef.enum = vals;
+          continue;
+        }
+        // radio group → enum from radio values
+        const radios = form.querySelectorAll(`input[type="radio"][name="${propName}"]`);
+        if (radios.length) {
+          propDef.enum = [...radios].map(r => r.value).filter(Boolean);
+        }
+      }
+
+      return { ...tool, inputSchema: JSON.stringify(schema) };
+    });
+  }
+
   function listTools() {
-    const tools = navigator.modelContextTesting.listTools();
+    let tools = navigator.modelContextTesting.listTools();
+    tools = enrichToolSchemas(tools);
     console.debug(`[WebMCP] Got ${tools.length} tools`, tools);
     chrome.runtime.sendMessage({ tools, url: location.href });
   }
