@@ -285,6 +285,7 @@ export class AIChatController {
     const loopResult = await executeToolLoop({
       chat,
       tabId: targetTabId,
+      originTabId: tab.id,
       initialResult,
       pageContext,
       currentTools: allTools,

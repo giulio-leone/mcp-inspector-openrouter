@@ -115,6 +115,8 @@ export async function waitForPageAndRescan(
 export interface ToolLoopParams {
   chat: OpenRouterChat;
   tabId: number;
+  /** The original tab where the sidebar is open (for cross-tab focus management) */
+  originTabId?: number;
   initialResult: ChatSendResponse;
   pageContext: PageContext | null;
   currentTools: CleanTool[];
@@ -136,12 +138,15 @@ export async function executeToolLoop(params: ToolLoopParams): Promise<ToolLoopR
   const {
     chat,
     tabId,
+    originTabId,
     planManager,
     trace,
     addMessage,
     getConfig,
     onToolsUpdated,
   } = params;
+
+  const isCrossTab = originTabId !== undefined && originTabId !== tabId;
 
   let { initialResult: currentResult, pageContext, currentTools } = params;
   let finalResponseGiven = false;
@@ -218,6 +223,13 @@ export async function executeToolLoop(params: ToolLoopParams): Promise<ToolLoopR
         let navigatedDuringBatch = false;
 
         try {
+          // Focus the target tab if cross-tab execution (required for click/focus events)
+          if (isCrossTab) {
+            logger.info('ToolLoop', `Cross-tab: focusing tab ${tabId} before tool "${name}"`);
+            await chrome.tabs.update(tabId, { active: true });
+            // Brief pause for tab to become visible and interactive
+            await new Promise(r => setTimeout(r, 300));
+          }
           logger.info('ToolLoop', `Executing tool "${name}" on tab ${tabId}`, args);
           const rawResult = await chrome.tabs.sendMessage(tabId, {
             action: 'EXECUTE_TOOL',
