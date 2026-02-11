@@ -1,0 +1,123 @@
+/**
+ * conversation-controller.ts — Manages conversation CRUD and DOM wiring.
+ */
+
+import type { MessageRole } from '../types';
+import type { OpenRouterChat } from '../services/adapters';
+import * as Store from './chat-store';
+import * as ChatUI from './chat-ui';
+
+export interface ConversationState {
+  currentSite: string;
+  currentConvId: string | null;
+  chat: OpenRouterChat | undefined;
+  trace: unknown[];
+}
+
+export class ConversationController {
+  private readonly chatContainer: HTMLDivElement;
+  private readonly conversationSelect: HTMLSelectElement;
+
+  state: ConversationState;
+
+  constructor(
+    chatContainer: HTMLDivElement,
+    conversationSelect: HTMLSelectElement,
+    initialState: ConversationState,
+  ) {
+    this.chatContainer = chatContainer;
+    this.conversationSelect = conversationSelect;
+    this.state = initialState;
+  }
+
+  refreshConversationList(): void {
+    const convs = Store.listConversations(this.state.currentSite);
+    ChatUI.populateSelector(this.conversationSelect, convs, this.state.currentConvId);
+  }
+
+  switchToConversation(convId: string): void {
+    this.state.currentConvId = convId;
+    const msgs = Store.getMessages(this.state.currentSite, convId);
+    ChatUI.renderConversation(this.chatContainer, msgs);
+    this.refreshConversationList();
+    this.state.chat = undefined;
+  }
+
+  ensureConversation(): void {
+    if (this.state.currentConvId) return;
+    const conv = Store.createConversation(this.state.currentSite);
+    this.state.currentConvId = conv.id;
+    this.refreshConversationList();
+  }
+
+  createNewConversation(): void {
+    const conv = Store.createConversation(this.state.currentSite);
+    this.state.currentConvId = conv.id;
+    this.state.chat = undefined;
+    this.state.trace = [];
+    ChatUI.clearChat(this.chatContainer);
+    this.refreshConversationList();
+  }
+
+  deleteConversation(): void {
+    if (!this.state.currentConvId) return;
+    Store.deleteConversation(this.state.currentSite, this.state.currentConvId);
+    this.state.currentConvId = null;
+    this.state.chat = undefined;
+    ChatUI.clearChat(this.chatContainer);
+    const convs = Store.listConversations(this.state.currentSite);
+    if (convs.length > 0) {
+      this.switchToConversation(convs[0].id);
+    } else {
+      this.refreshConversationList();
+    }
+  }
+
+  onSelectChange(): void {
+    const selectedId = this.conversationSelect.value;
+    if (selectedId && selectedId !== this.state.currentConvId) {
+      this.switchToConversation(selectedId);
+    }
+  }
+
+  /** Handle site change (tab navigation / switch). Resets state if site changed. */
+  handleSiteChange(newSite: string): boolean {
+    const sameSite = newSite === this.state.currentSite;
+    if (!sameSite) {
+      this.state.currentSite = newSite;
+      this.state.chat = undefined;
+      this.state.currentConvId = null;
+      ChatUI.clearChat(this.chatContainer);
+    }
+    return sameSite;
+  }
+
+  /** Load conversations for the current site, opening the first one if any exist. */
+  loadConversations(): void {
+    const convs = Store.listConversations(this.state.currentSite);
+    if (convs.length > 0) {
+      this.switchToConversation(convs[0].id);
+    } else {
+      this.refreshConversationList();
+    }
+  }
+
+  /** Add a message and render it in the chat. */
+  addAndRender(
+    role: MessageRole,
+    content: string,
+    meta: Record<string, unknown> = {},
+  ): void {
+    const msg = { role, content, ...meta };
+    if (this.state.currentConvId) {
+      Store.addMessage(this.state.currentSite, this.state.currentConvId, msg);
+    }
+    ChatUI.appendBubble(this.chatContainer, role, content, {
+      role,
+      content,
+      ts: Date.now(),
+      ...(meta.tool ? { tool: meta.tool as string } : {}),
+      ...(meta.args ? { args: meta.args as Record<string, unknown> } : {}),
+    });
+  }
+}

@@ -48,6 +48,7 @@ module.exports = {
         { from: 'src/manifest.json', to: 'manifest.json' },
         { from: 'src/sidebar.html', to: 'sidebar.html' },
         { from: 'src/styles.css', to: 'styles.css' },
+        { from: 'src/styles/', to: 'styles/' },
         { from: 'src/options.html', to: 'options.html' },
       ],
     }),

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { OpenRouterAdapter, OpenRouterChat } from '../openrouter.adapter';
+import { OpenRouterAdapter, OpenRouterChat } from '../openrouter';
 import type { AIResponse, ChatMessage, Tool } from '../../../types';
 import {
   OPENROUTER_CHAT_ENDPOINT,

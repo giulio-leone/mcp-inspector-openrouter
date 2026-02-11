@@ -1,0 +1,211 @@
+/* ── Plan Mode ── */
+.plan-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0;
+  margin: 8px 0;
+  overflow: hidden;
+  font-size: 12px;
+  box-shadow: var(--shadow-md);
+  animation: plan-appear 0.3s ease-out;
+}
+
+@keyframes plan-appear {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.plan-block--collapsed .plan-steps {
+  display: none;
+}
+
+.plan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, var(--primary), #4f86f7);
+  color: #fff;
+  cursor: default;
+}
+
+.plan-icon {
+  font-size: 16px;
+  filter: brightness(1.2);
+}
+
+.plan-goal {
+  flex: 1;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+}
+
+.plan-status-badge {
+  font-size: 13px;
+}
+
+.plan-toggle-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+.plan-toggle-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.plan-steps {
+  padding: 6px 0;
+}
+
+.plan-step {
+  transition: all 0.25s ease;
+}
+
+.plan-step--done {
+  opacity: 0.65;
+}
+
+.plan-step--done .plan-step-title {
+  color: var(--success);
+}
+
+.plan-step--failed .plan-step-title {
+  text-decoration: line-through;
+  color: var(--error);
+}
+
+.plan-step--in_progress {
+  background: var(--primary-soft);
+  border-left: 2px solid var(--primary);
+}
+
+.plan-step-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  transition: background var(--transition-fast);
+}
+
+.plan-step-row:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+.plan-step--depth-0 > .plan-step-row { padding-left: 12px; }
+.plan-step--depth-1 > .plan-step-row { padding-left: 28px; }
+.plan-step--depth-2 > .plan-step-row { padding-left: 44px; }
+.plan-step--depth-3 > .plan-step-row { padding-left: 60px; }
+
+.plan-step-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.plan-step-title {
+  font-size: 11.5px;
+  color: var(--text);
+  transition: color 0.3s ease;
+}
+
+.plan-step-detail {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--bg-elevated);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.plan-step-children {
+  border-left: 2px dashed var(--border);
+  margin-left: 18px;
+}
+
+/* Plan toggle button in chat header */
+.plan-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font);
+  transition: all var(--transition);
+}
+
+.plan-mode-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.plan-mode-toggle.active {
+  background: linear-gradient(135deg, var(--primary), #4f86f7);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.plan-mode-toggle .toggle-icon {
+  font-size: 12px;
+}
+
+/* Spinner animation for in-progress icon */
+.plan-step--in_progress .plan-step-icon {
+  animation: plan-spin 1s linear infinite;
+}
+
+@keyframes plan-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .plan-header {
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+  }
+
+  .plan-step--in_progress {
+    background: rgba(59, 130, 246, 0.08);
+    border-left-color: #3b82f6;
+  }
+
+  .plan-step-detail {
+    background: #333;
+    color: #9ca3af;
+  }
+
+  .plan-step-row:hover {
+    background: rgba(255,255,255,0.03);
+  }
+
+  .plan-mode-toggle.active {
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 360px) {
+  .plan-header { padding: 8px 10px; }
+  .plan-goal { font-size: 11px; }
+}

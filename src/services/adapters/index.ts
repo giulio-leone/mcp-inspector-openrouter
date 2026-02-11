@@ -8,7 +8,7 @@ export {
   AuthenticationError,
   RateLimitError,
   ModelError,
-} from './openrouter.adapter';
-export type { ChatConfig, ChatSendParams, StreamChunk } from './openrouter.adapter';
+} from './openrouter';
+export type { ChatConfig, ChatSendParams, StreamChunk } from './openrouter';
 export { ChromeStorageAdapter } from './chrome-storage.adapter';
 export { ChromeMessengerAdapter } from './chrome-messenger.adapter';

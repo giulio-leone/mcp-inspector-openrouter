@@ -1,0 +1,68 @@
+/* ── Tab bar ── */
+.tab-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  letter-spacing: 0.01em;
+}
+
+.tab-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* ── Tab panels ── */
+.tab-panel {
+  display: none;
+  padding: 12px;
+  animation: panel-in 0.2s ease-out;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .tab-btn.active {
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 360px) {
+  .tab-bar { padding: 6px 6px; gap: 2px; }
+  .tab-btn { padding: 6px 8px; font-size: 12px; }
+  .tab-panel { padding: 8px; }
+}
