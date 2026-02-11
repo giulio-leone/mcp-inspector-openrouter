@@ -102,7 +102,7 @@ class OpenRouterChat {
                 if (m.functionResponse) {
                     this.history.push({
                         role: 'tool',
-                        tool_call_id: m.functionResponse.tool_call_id, // We need to track this!
+                        tool_call_id: m.functionResponse.tool_call_id,
                         content: JSON.stringify(m.functionResponse.response.result || m.functionResponse.response.error)
                     });
                 }
@@ -128,34 +128,52 @@ class OpenRouterChat {
             }));
         }
 
-        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.bridge.apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://github.com/miguelspizza/webmcp',
-                'X-Title': 'Model Context Tool Inspector (OpenRouter)'
-            },
-            body: JSON.stringify(body)
-        });
+        // Retry logic for empty responses (up to 2 retries)
+        let data;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.bridge.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'https://github.com/miguelspizza/webmcp',
+                    'X-Title': 'Model Context Tool Inspector (OpenRouter)'
+                },
+                body: JSON.stringify(body)
+            });
 
-        if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error?.message || res.statusText);
+            if (!res.ok) {
+                const error = await res.json().catch(() => ({}));
+                throw new Error(error.error?.message || res.statusText);
+            }
+
+            data = await res.json();
+
+            if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+                break; // Valid response
+            }
+
+            // Empty response — wait and retry
+            console.warn(`[OpenRouter] Empty response on attempt ${attempt + 1}/3, retrying...`);
+            if (attempt < 2) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
         }
 
-        const data = await res.json();
-        if (!data.choices || data.choices.length === 0) {
-            throw new Error('OpenRouter returned an empty response (no choices).');
+        // If still empty after retries, throw — the system prompt instructs
+        // the model to always report tool outcomes, so this shouldn't happen
+        if (!data?.choices?.length || !data.choices[0].message) {
+            throw new Error('OpenRouter returned no response after multiple attempts.');
         }
 
         const assistantMessage = data.choices[0].message;
-        if (!assistantMessage) {
-            throw new Error('OpenRouter response choice missing message.');
-        }
 
-        // Store assistant message in history
-        this.history.push(assistantMessage);
+        // Ensure content is never null in stored history (some models send null content with tool_calls)
+        const historyEntry = { ...assistantMessage };
+        if (historyEntry.content === null || historyEntry.content === undefined) {
+            historyEntry.content = '';
+        }
+        this.history.push(historyEntry);
 
         return {
             text: assistantMessage.content || '',

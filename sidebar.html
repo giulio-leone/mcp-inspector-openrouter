@@ -109,6 +109,19 @@
       <pre id="toolResults"></pre>
     </div>
   </div>
+
+  <!-- Security confirmation dialog for mutation-tier inferred tools -->
+  <dialog id="securityDialog" class="security-dialog">
+    <div class="dialog-body">
+      <p class="dialog-title">⚠️ <span id="dialogToolName"></span></p>
+      <p class="dialog-desc" id="dialogDesc"></p>
+      <div class="dialog-actions">
+        <button id="dialogCancel" class="btn-cancel">Cancel</button>
+        <button id="dialogConfirm" class="btn-danger">Execute</button>
+      </div>
+    </div>
+  </dialog>
+
   <script type="module" src="sidebar.js"></script>
 </body>
 

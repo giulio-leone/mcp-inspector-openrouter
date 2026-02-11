@@ -12,11 +12,6 @@ if (window.__wmcp_loaded) {
 
   chrome.runtime.onMessage.addListener(({ action, name, inputArgs }, _, reply) => {
     try {
-      if (!navigator.modelContextTesting) {
-        throw new Error(
-          'Error: You must run Chrome with the "Enables WebMCP for Testing" flag enabled.',
-        );
-      }
       if (action == 'PING') {
         reply({ status: 'pong' });
         return false;
@@ -38,19 +33,37 @@ if (window.__wmcp_loaded) {
         return false;
       }
       if (action == 'LIST_TOOLS') {
-        listTools();
-        if (navigator.modelContextTesting.registerToolsChangedCallback) {
-          navigator.modelContextTesting.registerToolsChangedCallback(listTools);
+        listToolsAlwaysAugment();
+        // Register native callback if available
+        if (navigator.modelContextTesting?.registerToolsChangedCallback) {
+          navigator.modelContextTesting.registerToolsChangedCallback(() => listToolsAlwaysAugment());
         }
         reply({ queued: true });
         return false;
       }
       if (action == 'EXECUTE_TOOL') {
-        // Normalize AI args against actual HTML form values (case-insensitive)
+        // Check if this is an inferred tool
+        const inferredTool = window.__wmcpInferredToolsMap?.get(name);
+        if (inferredTool) {
+          // Execute inferred tool directly (no confirmation prompt)
+          console.debug(`[WebMCP] Execute INFERRED tool "${name}" with`, inputArgs);
+          window.__wmcpExecutor.execute(inferredTool, inputArgs)
+            .then(result => reply(result))
+            .catch(err => {
+              console.error('[WebMCP] Inferred execution error:', err);
+              reply(JSON.stringify(err.message || err));
+            });
+          return true;
+        }
+
+        // Native/declarative tool execution
+        if (!navigator.modelContextTesting) {
+          reply(JSON.stringify('WebMCP native API not available for native tool execution'));
+          return false;
+        }
         const normalizedArgs = normalizeToolArgs(name, inputArgs);
-        console.debug(`[WebMCP] Execute tool "${name}" with`, normalizedArgs, '(original:', inputArgs, ')');
+        console.debug(`[WebMCP] Execute NATIVE tool "${name}" with`, normalizedArgs);
         let targetFrame, loadPromise;
-        // Check if this tool is associated with a form target
         const formTarget = document.querySelector(`form[toolname="${name}"]`)?.target;
         if (formTarget) {
           targetFrame = document.querySelector(`[name=${formTarget}]`);
@@ -60,15 +73,12 @@ if (window.__wmcp_loaded) {
             });
           }
         }
-        // Execute the experimental tool with normalized args
         const promise = navigator.modelContextTesting.executeTool(name, normalizedArgs);
         promise
           .then(async (result) => {
-            // If result is null and we have a target frame, wait for the frame to reload.
             if (result === null && targetFrame && loadPromise) {
               console.debug(`[WebMCP] Waiting for form target ${targetFrame} to load`);
               await loadPromise;
-              console.debug('[WebMCP] Get cross document script tool result');
               result =
                 await targetFrame.contentWindow.navigator.modelContextTesting.getCrossDocumentScriptToolResult();
             }
@@ -213,11 +223,94 @@ if (window.__wmcp_loaded) {
     });
   }
 
-  function listTools() {
-    let tools = navigator.modelContextTesting.listTools();
-    tools = enrichToolSchemas(tools);
-    console.debug(`[WebMCP] Got ${tools.length} tools`, tools);
-    chrome.runtime.sendMessage({ tools, url: location.href });
+  // ── Map to store inferred tools for execution lookup ──
+  window.__wmcpInferredToolsMap = new Map();
+
+  /**
+   * ALWAYS-AUGMENT model:
+   *  1. Collect native tools (Tier 1) — if WebMCP API available
+   *  2. Collect declarative tools (Tier 2) — form[toolname]
+   *  3. ALWAYS run inference scan (Tier 3)
+   *  4. Merge: Native ∪ Declarative ∪ Inferred (native wins ties)
+   */
+  async function listToolsAlwaysAugment() {
+    let nativeTools = [];
+    let declarativeTools = [];
+    let inferredTools = [];
+
+    // Tier 1: WMCP Native API
+    if (navigator.modelContextTesting) {
+      try {
+        nativeTools = navigator.modelContextTesting.listTools() || [];
+        nativeTools = enrichToolSchemas(nativeTools);
+      } catch (e) {
+        console.warn('[WebMCP] Native API failed:', e);
+      }
+    }
+
+    // Tier 2: Declarative HTML (form[toolname])
+    const declForms = document.querySelectorAll('form[toolname]');
+    if (declForms.length > 0) {
+      declarativeTools = [...declForms].map(f => ({
+        name: f.getAttribute('toolname'),
+        description: f.getAttribute('tooldescription') || '',
+        inputSchema: extractFormSchema(f)
+      }));
+      declarativeTools = enrichToolSchemas(declarativeTools);
+    }
+
+    // Tier 3: Auto-Inference — ALWAYS runs
+    try {
+      inferredTools = await window.__wmcpInferenceEngine.scanPage();
+    } catch (e) {
+      console.warn('[WebMCP] Inference scan failed:', e);
+    }
+
+    // Store inferred tools for execution routing
+    window.__wmcpInferredToolsMap.clear();
+    for (const t of inferredTools) {
+      window.__wmcpInferredToolsMap.set(t.name, t);
+    }
+
+    // Union merge (native wins on name collision)
+    const { mergeToolSets } = window.__wmcpMerge;
+    let tools = mergeToolSets(nativeTools, declarativeTools, inferredTools);
+
+    // Strip internal properties before sending to sidebar
+    const cleanTools = tools.map(({ _el, _form, _schemaAction, ...rest }) => rest);
+
+    const sources = {
+      native: cleanTools.filter(t => t._source === 'native').length,
+      declarative: cleanTools.filter(t => t._source === 'declarative').length,
+      inferred: cleanTools.filter(t => t._source === 'inferred').length,
+    };
+    console.debug(
+      `[WebMCP] ${cleanTools.length} tools (${sources.native}N + ${sources.declarative}D + ${sources.inferred}I)`,
+      cleanTools
+    );
+    chrome.runtime.sendMessage({ tools: cleanTools, url: location.href });
+  }
+
+  /** Extract schema from a declarative form[toolname] */
+  function extractFormSchema(form) {
+    const props = {};
+    const required = [];
+    for (const inp of form.querySelectorAll('input, select, textarea')) {
+      if (inp.type === 'hidden' || inp.type === 'submit') continue;
+      const name = inp.name || inp.id;
+      if (!name) continue;
+      const prop = { type: inp.type === 'number' ? 'number' : 'string' };
+      if (inp.tagName === 'SELECT') {
+        prop.enum = [...inp.options].map(o => o.value).filter(Boolean);
+      }
+      props[name] = prop;
+      if (inp.required) required.push(name);
+    }
+    return JSON.stringify({
+      type: 'object',
+      properties: props,
+      ...(required.length ? { required } : {})
+    });
   }
 
   // --- DOM Mutation Observer ---
@@ -250,7 +343,11 @@ if (window.__wmcp_loaded) {
         clearTimeout(domObserverDebounce);
         domObserverDebounce = setTimeout(() => {
           console.debug('[WebMCP] DOM change detected, refreshing tools...');
-          listTools();
+          // Invalidate inference cache on DOM mutation
+          if (window.__wmcpInferenceEngine) {
+            window.__wmcpInferenceEngine.invalidateCache();
+          }
+          listToolsAlwaysAugment();
         }, 300);
       }
     });
@@ -271,6 +368,39 @@ if (window.__wmcp_loaded) {
     }
     clearTimeout(domObserverDebounce);
   }
+
+  // ── SPA Navigation Interception ──
+  // Detect route changes in SPAs that use history.pushState/replaceState
+  let _lastSpaUrl = location.href;
+  let _spaDebounce = null;
+
+  function onSpaNavigation() {
+    if (location.href === _lastSpaUrl) return;
+    _lastSpaUrl = location.href;
+    clearTimeout(_spaDebounce);
+    _spaDebounce = setTimeout(() => {
+      console.debug('[WebMCP] SPA navigation detected →', location.href);
+      if (window.__wmcpInferenceEngine) {
+        window.__wmcpInferenceEngine.invalidateCache();
+      }
+      listToolsAlwaysAugment();
+    }, 500);
+  }
+
+  // Intercept pushState & replaceState
+  const origPushState = history.pushState;
+  history.pushState = function (...args) {
+    origPushState.apply(this, args);
+    onSpaNavigation();
+  };
+
+  const origReplaceState = history.replaceState;
+  history.replaceState = function (...args) {
+    origReplaceState.apply(this, args);
+    onSpaNavigation();
+  };
+
+  window.addEventListener('popstate', onSpaNavigation);
 
   window.addEventListener('toolactivated', ({ toolName }) => {
     console.debug(`[WebMCP] Tool "${toolName}" started execution.`);

@@ -6,28 +6,33 @@
    "content_scripts": [
       {
          "js": [
+            "wmcp-inference-engine.js",
+            "wmcp-tool-executor.js",
+            "wmcp-merge.js",
+            "wmcp-ai-classifier.js",
             "content.js"
          ],
          "matches": [
-            "\u003Call_urls>"
+            "<all_urls>"
          ],
-         "runAt": "document_start"
+         "runAt": "document_idle"
       }
    ],
    "description": "Inspect, monitor, and execute WebMCP tools manually or with OpenRouter",
    "host_permissions": [
-      "\u003Call_urls>"
+      "<all_urls>"
    ],
    "manifest_version": 3,
    "name": "Model Context Tool Inspector (OpenRouter)",
    "permissions": [
       "sidePanel",
       "activeTab",
-      "scripting"
+      "scripting",
+      "storage"
    ],
    "side_panel": {
       "default_path": "sidebar.html"
    },
    "update_url": "https://clients2.google.com/service/update2/crx",
-   "version": "1.5"
+   "version": "1.6"
 }

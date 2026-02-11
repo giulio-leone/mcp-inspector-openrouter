@@ -671,3 +671,206 @@ input:checked+.toggle-slider:before {
     color: #9ca3af;
   }
 }
+
+/* ── Source badges ── */
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.badge-native {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-declarative {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-inferred {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-ai {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+/* ── Confidence bar ── */
+.confidence-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.confidence-bar-track {
+  width: 40px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.confidence-low {
+  background: #ef4444;
+}
+
+.confidence-med {
+  background: #f59e0b;
+}
+
+.confidence-high {
+  background: #10b981;
+}
+
+/* ── Security confirmation dialog ── */
+.security-dialog {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 360px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: dialog-in 0.2s ease-out;
+}
+
+.security-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dialog-body {
+  padding: 20px;
+}
+
+.dialog-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dialog-desc {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.dialog-actions button {
+  padding: 6px 16px;
+  font-size: 12px;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.btn-confirm {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-danger {
+  background: #ef4444;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* ── Category label ── */
+.category-label {
+  font-size: 10px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* ── Dark mode: badges, confidence, dialog ── */
+@media (prefers-color-scheme: dark) {
+  .badge-native {
+    background: #064e3b;
+    color: #6ee7b7;
+  }
+
+  .badge-declarative {
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
+
+  .badge-inferred {
+    background: #451a03;
+    color: #fcd34d;
+  }
+
+  .badge-ai {
+    background: #2e1065;
+    color: #c4b5fd;
+  }
+
+  .confidence-bar-track {
+    background: #404040;
+  }
+
+  .category-label {
+    color: #9ca3af;
+  }
+
+  .security-dialog {
+    background: #1e1e1e;
+    color: #e5e5e5;
+  }
+
+  .dialog-desc {
+    color: #9ca3af;
+  }
+
+  .btn-cancel {
+    background: #333;
+    color: #e5e5e5;
+  }
+
+  .btn-cancel:hover {
+    background: #404040;
+  }
+}

@@ -30,6 +30,11 @@ const modelSelect = document.getElementById('modelSelect');
 const conversationSelect = document.getElementById('conversationSelect');
 const newChatBtn = document.getElementById('newChatBtn');
 const deleteChatBtn = document.getElementById('deleteChatBtn');
+const securityDialog = document.getElementById('securityDialog');
+const dialogToolName = document.getElementById('dialogToolName');
+const dialogDesc = document.getElementById('dialogDesc');
+const dialogCancel = document.getElementById('dialogCancel');
+const dialogConfirm = document.getElementById('dialogConfirm');
 
 // ── State ──
 let currentTools = [];
@@ -223,25 +228,67 @@ chrome.runtime.onMessage.addListener(async ({ message, tools, url }, sender) => 
   executeBtn.disabled = false;
   copyToClipboard.hidden = false;
 
-  const keys = Object.keys(tools[0]);
-  keys.forEach(key => {
+  // Custom fixed columns: Source | Name | Category | Description | Confidence
+  ['Source', 'Name', 'Category', 'Description', 'Confidence'].forEach(label => {
     const th = document.createElement('th');
-    th.textContent = key;
+    th.textContent = label;
     thead.appendChild(th);
   });
 
   tools.forEach(item => {
     const row = document.createElement('tr');
-    keys.forEach(key => {
-      const td = document.createElement('td');
-      try { td.innerHTML = `<pre>${JSON.stringify(JSON.parse(item[key]), '', '  ')}</pre>`; }
-      catch { td.textContent = item[key]; }
-      row.appendChild(td);
-    });
+
+    // Source badge
+    const tdSource = document.createElement('td');
+    const src = item._source || 'unknown';
+    const isAI = item._aiRefined;
+    const badgeClass = isAI ? 'badge-ai'
+      : src === 'native' ? 'badge-native'
+        : src === 'declarative' ? 'badge-declarative'
+          : 'badge-inferred';
+    const badgeText = isAI ? 'AI' : src.charAt(0).toUpperCase() + src.slice(1);
+    tdSource.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
+    row.appendChild(tdSource);
+
+    // Name
+    const tdName = document.createElement('td');
+    tdName.textContent = item.name;
+    tdName.style.fontWeight = '600';
+    tdName.style.fontSize = '11px';
+    row.appendChild(tdName);
+
+    // Category
+    const tdCat = document.createElement('td');
+    tdCat.innerHTML = `<span class="category-label">${item.category || '—'}</span>`;
+    row.appendChild(tdCat);
+
+    // Description
+    const tdDesc = document.createElement('td');
+    tdDesc.textContent = item.description || '';
+    tdDesc.style.fontSize = '11px';
+    tdDesc.style.maxWidth = '180px';
+    row.appendChild(tdDesc);
+
+    // Confidence bar
+    const tdConf = document.createElement('td');
+    const conf = item.confidence ?? 1;
+    const pct = Math.round(conf * 100);
+    const colorClass = conf < 0.5 ? 'confidence-low' : conf < 0.7 ? 'confidence-med' : 'confidence-high';
+    tdConf.innerHTML = `
+      <span class="confidence-bar">
+        <span class="confidence-bar-track">
+          <span class="confidence-bar-fill ${colorClass}" style="width:${pct}%"></span>
+        </span>
+        ${pct}%
+      </span>`;
+    row.appendChild(tdConf);
+
     tbody.appendChild(row);
 
+    // Tool select dropdown with source prefix
     const option = document.createElement('option');
-    option.textContent = `"${item.name}"`;
+    const prefix = isAI ? '🟣' : src === 'native' ? '🟢' : src === 'declarative' ? '🔵' : '🟡';
+    option.textContent = `${prefix} ${item.name}`;
     option.value = item.name;
     option.dataset.inputSchema = item.inputSchema;
     toolNames.appendChild(option);
@@ -286,9 +333,12 @@ async function initGenAI() {
   if (savedApiKey) {
     apiKeyInput.value = savedApiKey;
     localStorage.setItem('openrouter_api_key', savedApiKey);
+    // Sync to chrome.storage.local for background script (AI classifier)
+    chrome.storage.local.set({ openrouter_api_key: savedApiKey });
   }
   modelSelect.value = savedModel;
   localStorage.setItem('openrouter_model', savedModel);
+  chrome.storage.local.set({ openrouter_model: savedModel });
 
   if (savedApiKey) {
     genAI = new OpenRouterBridge({ apiKey: savedApiKey });
@@ -319,6 +369,8 @@ saveSettingsBtn.onclick = async () => {
     await testBridge.getModels();
     localStorage.setItem('openrouter_api_key', apiKey);
     localStorage.setItem('openrouter_model', model);
+    // Sync to chrome.storage.local for background script (AI classifier)
+    chrome.storage.local.set({ openrouter_api_key: apiKey, openrouter_model: model });
     await initGenAI();
     connectionStatus.textContent = '✅ Connection successful & settings saved!';
     connectionStatus.className = 'status-message status-success';
@@ -499,6 +551,11 @@ function getConfig(pageContext) {
     "11. **CONVERSATION OVER TOOLS (CRITICAL):** If a user asks for a recommendation or opinion (e.g., 'Which should I choose?'), " +
     "use the product descriptions and names in the PAGE STATE to provide a helpful answer manually. " +
     "Do NOT call a tool if you can answer the user's intent with a natural message.",
+    "12. **ALWAYS REPORT TOOL OUTCOMES (CRITICAL):** After ALL tool calls have been executed and their results returned, " +
+    "you MUST ALWAYS include a text response summarizing what happened. " +
+    "Example: if you called add_to_cart → report 'Done, added X to cart.' " +
+    "If multiple tools were called → summarize ALL results. " +
+    "NEVER return an empty response after tool execution — always provide a brief summary of the outcomes.",
     "",
     "User prompts typically refer to the current tab unless stated otherwise.",
     "Use your tools to query page content when you need it.",
@@ -579,3 +636,34 @@ document.querySelectorAll('.collapsible-header').forEach(header => {
     if (content?.classList.contains('section-content')) content.classList.toggle('is-hidden');
   });
 });
+
+// ── Security confirmation dialog ──
+let _pendingConfirm = null;
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'CONFIRM_EXECUTION') {
+    const { toolName, description, tier } = msg;
+    dialogToolName.textContent = toolName;
+    dialogDesc.textContent = `This tool performs a ${tier === 2 ? 'mutation' : 'navigation'} action: ${description || toolName}. Are you sure you want to execute it?`;
+
+    _pendingConfirm = { tabId: sender.tab?.id, toolName };
+    securityDialog.showModal();
+    sendResponse({ received: true });
+  }
+});
+
+dialogCancel.onclick = () => {
+  securityDialog.close();
+  if (_pendingConfirm?.tabId) {
+    chrome.tabs.sendMessage(_pendingConfirm.tabId, { action: 'CANCEL_EXECUTE', toolName: _pendingConfirm.toolName });
+  }
+  _pendingConfirm = null;
+};
+
+dialogConfirm.onclick = () => {
+  securityDialog.close();
+  if (_pendingConfirm?.tabId) {
+    chrome.tabs.sendMessage(_pendingConfirm.tabId, { action: 'CONFIRM_EXECUTE', toolName: _pendingConfirm.toolName });
+  }
+  _pendingConfirm = null;
+};
