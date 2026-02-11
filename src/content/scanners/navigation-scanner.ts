@@ -1,5 +1,6 @@
 /**
- * Navigation Scanner — discovers navigation links inside <nav> or [role="navigation"].
+ * Navigation Scanner — discovers ALL clickable links on the page as navigation tools.
+ * Scans: <nav> links, [role="navigation"] links, and all other <a[href]> elements.
  */
 
 import type { Tool } from '../../types';
@@ -8,22 +9,35 @@ import { BaseScanner } from './base-scanner';
 export class NavigationScanner extends BaseScanner {
   readonly category = 'navigation' as const;
 
+  /** Raise cap for navigation — pages often have many links */
+  protected override readonly maxTools = 200;
+
   scan(root: Document | Element | ShadowRoot): Tool[] {
     const tools: Tool[] = [];
-    const navLinks = (root as ParentNode).querySelectorAll(
-      'nav a[href], [role="navigation"] a[href]',
-    );
+    const seen = new Set<string>();
 
-    for (const link of navLinks) {
+    // Scan ALL links on the page
+    const allLinks = (root as ParentNode).querySelectorAll('a[href]');
+
+    for (const link of allLinks) {
       const href = link.getAttribute('href');
-      if (!href || href === '#' || href.startsWith('javascript:')) continue;
+      if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) continue;
+
       const label = this.getLabel(link) || link.textContent?.trim() || '';
-      if (!label) continue;
+      if (!label || label.length < 2) continue;
+
+      // Resolve to absolute URL for deduplication
+      const absoluteHref = (link as HTMLAnchorElement).href;
+      if (seen.has(absoluteHref)) continue;
+      seen.add(absoluteHref);
+
+      // Determine if link is in a nav region (higher confidence)
+      const inNav = !!link.closest('nav, [role="navigation"]');
 
       tools.push(
         this.createTool(
           `nav.go-${this.slugify(label)}`,
-          `Navigate to: ${label}`,
+          `Navigate to: ${label} (${absoluteHref})`,
           link as Element,
           this.makeInputSchema([]),
           this.computeConfidence({
@@ -31,8 +45,8 @@ export class NavigationScanner extends BaseScanner {
             hasLabel: true,
             hasName: true,
             isVisible: this.isVisible(link as Element),
-            hasRole: true,
-            hasSemanticTag: true,
+            hasRole: inNav,
+            hasSemanticTag: inNav,
           }),
           {
             title: `Navigate: ${label}`,
