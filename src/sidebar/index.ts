@@ -761,6 +761,10 @@ async function promptAI(): Promise<void> {
             },
           });
           addAndRender('tool_result', result, { tool: name });
+          // Wait briefly between tools to let the page settle
+          if (functionCalls.length > 1) {
+            await new Promise((r) => setTimeout(r, 300));
+          }
         } catch (e) {
           const errMsg = (e as Error).message;
           addAndRender('tool_error', errMsg, { tool: name });
