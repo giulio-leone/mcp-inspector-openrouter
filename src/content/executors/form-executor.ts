@@ -1,5 +1,8 @@
 /**
  * Form executor: fills fields, handles select/checkbox/radio, submits.
+ *
+ * Uses native value setter for React/Vue compatibility.
+ * Submits via submit button click > form.submit() > submit event.
  */
 
 import type { Tool } from '../../types';
@@ -16,6 +19,15 @@ export class FormExecutor extends BaseExecutor {
     if (!form) return this.fail('Form element not found');
 
     const parsed = this.parseArgs(args);
+
+    const nativeInputSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )?.set;
+    const nativeTextAreaSetter = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      'value',
+    )?.set;
 
     for (const [key, value] of Object.entries(parsed)) {
       const input = form.querySelector<HTMLElement>(
@@ -41,17 +53,35 @@ export class FormExecutor extends BaseExecutor {
           `input[type="radio"][name="${key}"][value="${String(value)}"]`,
         );
         if (radio) radio.checked = true;
-      } else if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
-        input.value = String(value);
+      } else if (input instanceof HTMLInputElement) {
+        const setter = nativeInputSetter;
+        if (setter) setter.call(input, String(value));
+        else input.value = String(value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (input instanceof HTMLTextAreaElement) {
+        const setter = nativeTextAreaSetter;
+        if (setter) setter.call(input, String(value));
+        else input.value = String(value);
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }
 
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    form.dispatchEvent(
-      new Event('submit', { bubbles: true, cancelable: true }),
+    // Small delay for frameworks to process value changes
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Strategy 1: find and click a submit button
+    const submitBtn = form.querySelector<HTMLElement>(
+      'input[type="submit"], button[type="submit"], button:not([type])',
     );
+
+    if (submitBtn) {
+      submitBtn.click();
+    } else {
+      // Strategy 2: native form.submit()
+      form.submit();
+    }
 
     const fieldCount = Object.keys(parsed).length;
     return this.ok(
