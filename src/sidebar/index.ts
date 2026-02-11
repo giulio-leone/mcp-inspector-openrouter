@@ -954,6 +954,8 @@ async function promptAI(): Promise<void> {
           }
         }
 
+        let navigatedDuringBatch = false;
+
         try {
           const rawResult = await chrome.tabs.sendMessage(tab.id, {
             action: 'EXECUTE_TOOL',
@@ -976,8 +978,16 @@ async function promptAI(): Promise<void> {
               updatePlanStep(activePlan.element, step.id, 'done', String(result).substring(0, 50));
             }
           }
-          // Wait briefly between tools to let the page settle
-          if (functionCalls.length > 1) {
+
+          // After a navigation tool, rescan immediately and skip remaining tools in this batch
+          if (isNavigationTool(name) && tab.id) {
+            console.debug(`[Sidebar] Navigation detected (${name}), rescanning page...`);
+            const rescan = await waitForPageAndRescan(tab.id);
+            pageContext = rescan.pageContext;
+            currentTools = rescan.tools;
+            navigatedDuringBatch = true;
+          } else if (functionCalls.length > 1) {
+            // Wait briefly between non-nav tools to let the page settle
             await new Promise((r) => setTimeout(r, 300));
           }
         } catch (e) {
@@ -998,28 +1008,23 @@ async function promptAI(): Promise<void> {
             },
           });
         }
-      }
 
-      // Detect if any executed tool causes navigation
-      const hadNavigation = functionCalls.some((fc) =>
-        isNavigationTool(fc.name),
-      );
-
-      if (hadNavigation && tab.id) {
-        const rescan = await waitForPageAndRescan(tab.id);
-        pageContext = rescan.pageContext;
-        currentTools = rescan.tools;
-        // Add a system-level note so the AI knows the page changed
-        toolResponses.push({
-          functionResponse: {
-            name: '_system',
-            response: {
-              result:
-                'Page has navigated. Updated page context and tools are now available.',
-            },
-            tool_call_id: '_nav_rescan',
-          },
-        });
+        // If we navigated, skip remaining tools in this batch (they belong to the old page)
+        if (navigatedDuringBatch) {
+          // Return "skipped" for remaining tool calls so the model gets valid responses
+          const remaining = functionCalls.slice(functionCalls.indexOf(functionCalls.find(fc => fc.name === name && fc.id === id)!) + 1);
+          for (const skipped of remaining) {
+            toolResponses.push({
+              functionResponse: {
+                name: skipped.name,
+                response: { result: `Skipped: page navigated, this tool no longer exists on the new page.` },
+                tool_call_id: skipped.id,
+              },
+            });
+            addAndRender('tool_result', `⏭️ Skipped (page navigated)`, { tool: skipped.name });
+          }
+          break;
+        }
       }
 
       const updatedConfig = getConfig(pageContext);
