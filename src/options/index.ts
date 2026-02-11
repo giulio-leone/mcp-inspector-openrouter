@@ -7,6 +7,7 @@ import { OpenRouterAdapter } from '../services/adapters';
 import {
   STORAGE_KEY_API_KEY,
   STORAGE_KEY_MODEL,
+  STORAGE_KEY_SCREENSHOT_ENABLED,
   DEFAULT_MODEL,
 } from '../utils/constants';
 
@@ -21,6 +22,7 @@ const connectionStatus = $<HTMLDivElement>('connectionStatus');
 const modelSelect = $<HTMLInputElement>('modelSelect');
 const modelList = $<HTMLDataListElement>('modelList');
 const versionLabel = $<HTMLSpanElement>('versionLabel');
+const screenshotToggle = $<HTMLInputElement>('screenshotToggle');
 
 // ── Load saved settings ──
 
@@ -28,6 +30,7 @@ async function loadSettings(): Promise<void> {
   const result = await chrome.storage.local.get([
     STORAGE_KEY_API_KEY,
     STORAGE_KEY_MODEL,
+    STORAGE_KEY_SCREENSHOT_ENABLED,
   ]);
   const savedKey = (result[STORAGE_KEY_API_KEY] as string) ?? '';
   const savedModel =
@@ -35,6 +38,7 @@ async function loadSettings(): Promise<void> {
 
   if (savedKey) apiKeyInput.value = savedKey;
   modelSelect.value = savedModel;
+  screenshotToggle.checked = !!(result[STORAGE_KEY_SCREENSHOT_ENABLED] as boolean);
 
   // Load version from manifest
   const manifest = chrome.runtime.getManifest();
@@ -119,6 +123,14 @@ modelSelect.addEventListener('input', () => {
     void chrome.storage.local.set({ [STORAGE_KEY_MODEL]: model });
     localStorage.setItem(STORAGE_KEY_MODEL, model);
   }
+});
+
+// ── Screenshot toggle ──
+
+screenshotToggle.addEventListener('change', () => {
+  void chrome.storage.local.set({
+    [STORAGE_KEY_SCREENSHOT_ENABLED]: screenshotToggle.checked,
+  });
 });
 
 // ── Init ──

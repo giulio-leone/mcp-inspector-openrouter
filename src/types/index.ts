@@ -18,6 +18,7 @@ export type {
   ScannerResult,
   ProductInfo,
   PageContext,
+  PageLink,
   AIClassifierPageContext,
   AIClassificationResult,
   ConfidenceSignals,
@@ -40,6 +41,7 @@ export type {
   GetCrossDocumentResultMessage,
   ConfirmExecuteMessage,
   CancelExecuteMessage,
+  CaptureScreenshotMessage,
   ContentScriptMessage,
   AIClassifyMessage,
   BackgroundMessage,
@@ -52,6 +54,7 @@ export type {
   LockResponse,
   QueuedResponse,
   AIClassifyResponse,
+  ScreenshotResponse,
 } from './message.types';
 
 export type {
@@ -59,6 +62,9 @@ export type {
   AIModelPricing,
   ChatRole,
   ChatMessage,
+  TextContentPart,
+  ImageContentPart,
+  ContentPart,
   ToolCall,
   ToolCallFunction,
   ParsedFunctionCall,

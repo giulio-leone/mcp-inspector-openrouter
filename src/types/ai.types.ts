@@ -24,10 +24,23 @@ export interface AIModelPricing {
 /** Role in the OpenAI-compatible chat format */
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
+/** Content part for multi-modal messages (text or image) */
+export interface TextContentPart {
+  readonly type: 'text';
+  readonly text: string;
+}
+
+export interface ImageContentPart {
+  readonly type: 'image_url';
+  readonly image_url: { readonly url: string };
+}
+
+export type ContentPart = TextContentPart | ImageContentPart;
+
 /** A message in the OpenAI-compatible chat format */
 export interface ChatMessage {
   readonly role: ChatRole;
-  readonly content: string;
+  readonly content: string | readonly ContentPart[];
   readonly tool_calls?: readonly ToolCall[];
   /** Used when role is 'tool' to reference the originating tool call */
   readonly tool_call_id?: string;

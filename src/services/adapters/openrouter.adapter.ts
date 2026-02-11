@@ -12,6 +12,7 @@ import type {
   ChatMessage,
   ChatRole,
   ChatSendResponse,
+  ContentPart,
   FunctionDeclaration,
   ParsedFunctionCall,
   Tool,
@@ -141,7 +142,7 @@ export interface ChatConfig {
 }
 
 export interface ChatSendParams {
-  readonly message: string | readonly ToolResponse[];
+  readonly message: string | readonly ContentPart[] | readonly ToolResponse[];
   readonly config?: ChatConfig;
 }
 
@@ -164,6 +165,9 @@ export class OpenRouterChat {
     // Append user or tool messages to history
     if (typeof message === 'string') {
       this.history.push({ role: 'user', content: message });
+    } else if (Array.isArray(message) && message.length > 0 && 'type' in message[0]) {
+      // Multi-part content (text + image)
+      this.history.push({ role: 'user', content: message as readonly ContentPart[] });
     } else if (Array.isArray(message)) {
       for (const m of message) {
         if (m.functionResponse) {
@@ -251,7 +255,7 @@ export class OpenRouterChat {
       }));
 
     return {
-      text: assistantMessage.content ?? '',
+      text: (typeof assistantMessage.content === 'string' ? assistantMessage.content : '') ?? '',
       functionCalls,
       candidates: data.choices as readonly AIResponseChoice[],
     };

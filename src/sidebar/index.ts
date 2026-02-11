@@ -11,12 +11,15 @@ import type {
   ParsedFunctionCall,
   ChatSendResponse,
   FunctionDeclaration,
+  ScreenshotResponse,
+  ContentPart,
 } from '../types';
 import { OpenRouterAdapter, OpenRouterChat } from '../services/adapters';
 import {
   STORAGE_KEY_LOCK_MODE,
   STORAGE_KEY_API_KEY,
   STORAGE_KEY_MODEL,
+  STORAGE_KEY_SCREENSHOT_ENABLED,
   DEFAULT_MODEL,
 } from '../utils/constants';
 import * as Store from './chat-store';
@@ -596,7 +599,8 @@ async function suggestUserPrompt(): Promise<void> {
   )
     return;
 
-  const text = response.choices?.[0]?.message?.content ?? '';
+  const rawContent = response.choices?.[0]?.message?.content;
+  const text = typeof rawContent === 'string' ? rawContent : (rawContent ?? '').toString();
   lastSuggestedUserPrompt = text;
   userPromptText.value = '';
   for (const chunk of text) {
@@ -667,13 +671,40 @@ async function promptAI(): Promise<void> {
 
   const config = getConfig(pageContext);
   trace.push({ userPrompt: { message, config } });
+
+  // Capture screenshot if enabled
+  let screenshotDataUrl: string | undefined;
+  try {
+    const screenshotSettings = await chrome.storage.local.get([STORAGE_KEY_SCREENSHOT_ENABLED]);
+    if (screenshotSettings[STORAGE_KEY_SCREENSHOT_ENABLED]) {
+      const res = (await chrome.runtime.sendMessage({ action: 'CAPTURE_SCREENSHOT' })) as ScreenshotResponse;
+      if (res?.screenshot) {
+        screenshotDataUrl = res.screenshot;
+      }
+    }
+  } catch (e) {
+    console.warn('[Sidebar] Screenshot capture failed:', e);
+  }
+
+  // Build user message (multi-part if screenshot is available)
+  const userMessage: string | ContentPart[] =
+    screenshotDataUrl
+      ? [
+          { type: 'text' as const, text: message },
+          { type: 'image_url' as const, image_url: { url: screenshotDataUrl } },
+        ]
+      : message;
+
   let currentResult: ChatSendResponse = await chat.sendMessage({
-    message,
+    message: userMessage,
     config,
   });
   let finalResponseGiven = false;
+  const MAX_TOOL_ITERATIONS = 10;
+  let iteration = 0;
 
-  while (!finalResponseGiven) {
+  while (!finalResponseGiven && iteration < MAX_TOOL_ITERATIONS) {
+    iteration++;
     const response = currentResult;
     trace.push({ response });
     const functionCalls: readonly ParsedFunctionCall[] =
@@ -726,6 +757,10 @@ async function promptAI(): Promise<void> {
         config: getConfig(),
       });
     }
+  }
+
+  if (iteration >= MAX_TOOL_ITERATIONS && !finalResponseGiven) {
+    addAndRender('error', '⚠️ Reached maximum tool execution iterations (10). Stopping to prevent infinite loop.');
   }
 }
 
@@ -826,6 +861,13 @@ function getConfig(pageContext?: PageContext | null): ChatConfig {
       "Example: if you called add_to_cart → report 'Done, added X to cart.' " +
       'If multiple tools were called → summarize ALL results. ' +
       'NEVER return an empty response after tool execution — always provide a brief summary of the outcomes.',
+    '13. **COMPLETE ACTIONS (CRITICAL):** When executing a task, ALWAYS complete ALL necessary steps. ' +
+      'For example: if the user says "search for X", you must: (1) fill the search field, AND (2) submit/click the search button. ' +
+      'NEVER stop at an intermediate step. Always think about what the user WANTS TO ACHIEVE, not just the literal action.',
+    '14. **MULTI-TOOL CHAINING:** If accomplishing a goal requires multiple tool calls, make ALL of them in sequence. ' +
+      'Do not wait for the user to ask for the next step. Example: "log in with email X password Y" requires: ' +
+      'fill email → fill password → click login. Execute all steps automatically.',
+    '15. **FORM COMPLETION:** After filling form fields, ALWAYS look for a submit/search/go button and click it unless the user explicitly says not to.',
     '',
     'User prompts typically refer to the current tab unless stated otherwise.',
     'Use your tools to query page content when you need it.',
@@ -860,6 +902,15 @@ function getConfig(pageContext?: PageContext | null): ChatConfig {
         'Current form values: ' +
           JSON.stringify(pageContext.formDefaults),
       );
+    }
+    if (pageContext.metaDescription)
+      systemInstruction.push(`Meta description: ${pageContext.metaDescription}`);
+    if (pageContext.headings?.length) {
+      systemInstruction.push('Page headings:');
+      pageContext.headings.forEach(h => systemInstruction.push(`  - ${h}`));
+    }
+    if (pageContext.pageText) {
+      systemInstruction.push('', '**PAGE CONTENT (visible text):**', pageContext.pageText);
     }
   }
 
