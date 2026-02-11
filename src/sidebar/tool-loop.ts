@@ -46,6 +46,7 @@ export async function waitForPageAndRescan(
   currentTools: CleanTool[],
 ): Promise<{ pageContext: PageContext | null; tools: CleanTool[] }> {
   const rescanStart = performance.now();
+  logger.info('Rescan', `Starting page rescan for tab ${tabId}...`);
 
   await new Promise<void>((resolve) => {
     let resolved = false;
@@ -53,6 +54,7 @@ export async function waitForPageAndRescan(
       if (!resolved) {
         resolved = true;
         chrome.tabs.onUpdated.removeListener(listener);
+        logger.debug('Rescan', `Page load wait completed in ${(performance.now() - rescanStart).toFixed(0)}ms`);
         resolve();
       }
     };
@@ -61,14 +63,18 @@ export async function waitForPageAndRescan(
       changeInfo: chrome.tabs.TabChangeInfo,
     ) => {
       if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        logger.debug('Rescan', `Tab ${tabId} status=complete`);
         done();
       }
     };
     chrome.tabs.onUpdated.addListener(listener);
-    setTimeout(done, 5000);
+    setTimeout(() => {
+      logger.warn('Rescan', `Page load timeout (5s) for tab ${tabId}`);
+      done();
+    }, 5000);
   });
 
-  console.debug(`[Sidebar] Page load wait took ${(performance.now() - rescanStart).toFixed(0)}ms`);
+  logger.debug('Rescan', `Page load wait took ${(performance.now() - rescanStart).toFixed(0)}ms`);
 
   let pageContext: PageContext | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -77,36 +83,48 @@ export async function waitForPageAndRescan(
       pageContext = (await chrome.tabs.sendMessage(tabId, {
         action: 'GET_PAGE_CONTEXT',
       })) as PageContext;
-      console.debug(`[Sidebar] GET_PAGE_CONTEXT succeeded on attempt ${attempt + 1} (${(performance.now() - rescanStart).toFixed(0)}ms)`);
+      logger.info('Rescan', `GET_PAGE_CONTEXT succeeded (attempt ${attempt + 1}): title="${pageContext?.title}"`);
       break;
     } catch (e) {
-      console.warn(`[Sidebar] GET_PAGE_CONTEXT attempt ${attempt + 1}/3 failed:`, e);
+      logger.warn('Rescan', `GET_PAGE_CONTEXT attempt ${attempt + 1}/3 failed`, e);
       await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
     }
   }
 
-  const toolsPromise = new Promise<CleanTool[]>((resolve) => {
-    const onMsg = (msg: { tools?: CleanTool[] }) => {
-      if (msg.tools) {
-        chrome.runtime.onMessage.removeListener(onMsg);
-        resolve(msg.tools);
-      }
-    };
-    chrome.runtime.onMessage.addListener(onMsg);
-    setTimeout(() => {
-      chrome.runtime.onMessage.removeListener(onMsg);
-      resolve(currentTools);
-    }, 3000);
-  });
-
+  // Use GET_TOOLS_SYNC for reliable cross-tab tool fetching
+  let tools = currentTools;
   try {
-    await chrome.tabs.sendMessage(tabId, { action: 'LIST_TOOLS' });
-  } catch {
-    // Content script not ready; tools stay as-is
+    await ensureContentScript(tabId);
+    const toolsResult = await chrome.tabs.sendMessage(tabId, { action: 'GET_TOOLS_SYNC' }) as { tools?: CleanTool[] };
+    if (toolsResult?.tools?.length) {
+      tools = toolsResult.tools;
+      logger.info('Rescan', `GET_TOOLS_SYNC returned ${tools.length} tools`);
+    } else {
+      logger.warn('Rescan', 'GET_TOOLS_SYNC returned 0 tools, keeping current');
+    }
+  } catch (e) {
+    logger.error('Rescan', 'GET_TOOLS_SYNC failed, falling back to broadcast', e);
+    // Fallback: use broadcast-based approach
+    const toolsPromise = new Promise<CleanTool[]>((resolve) => {
+      const onMsg = (msg: { tools?: CleanTool[] }) => {
+        if (msg.tools) {
+          chrome.runtime.onMessage.removeListener(onMsg);
+          resolve(msg.tools);
+        }
+      };
+      chrome.runtime.onMessage.addListener(onMsg);
+      setTimeout(() => {
+        chrome.runtime.onMessage.removeListener(onMsg);
+        resolve(currentTools);
+      }, 3000);
+    });
+    try {
+      await chrome.tabs.sendMessage(tabId, { action: 'LIST_TOOLS' });
+    } catch { /* Content script not ready */ }
+    tools = await toolsPromise;
   }
-  const tools = await toolsPromise;
 
-  console.debug(`[Sidebar] Rescan completed in ${(performance.now() - rescanStart).toFixed(0)}ms`);
+  logger.info('Rescan', `Rescan completed in ${(performance.now() - rescanStart).toFixed(0)}ms: ${tools.length} tools`);
   return { pageContext, tools };
 }
 
@@ -248,7 +266,7 @@ export async function executeToolLoop(params: ToolLoopParams): Promise<ToolLoopR
           planManager.markStepDone(String(result).substring(0, 50));
 
           if (isNavigationTool(name)) {
-            console.debug(`[Sidebar] Navigation detected (${name}), rescanning page...`);
+            logger.info('ToolLoop', `Navigation detected (${name}), rescanning page on tab ${tabId}...`);
             const rescan = await waitForPageAndRescan(tabId, currentTools);
             pageContext = rescan.pageContext;
             currentTools = rescan.tools;
