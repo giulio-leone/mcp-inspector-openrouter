@@ -42,42 +42,56 @@
       </div>
     </div>
 
-    <h2 class="collapsible-header">Interact with the Page</h2>
+    <h2 class="collapsible-header">AI Chat</h2>
     <div class="section-content">
 
-      <div class="form-group">
-        <label for="userPromptText">User Prompt</label>
-        <textarea id="userPromptText"></textarea>
+      <!-- Conversation selector -->
+      <div class="chat-header">
+        <select id="conversationSelect"></select>
+        <button id="newChatBtn" class="icon-btn" title="New chat">＋</button>
+        <button id="deleteChatBtn" class="icon-btn danger" title="Delete conversation">🗑</button>
       </div>
 
-      <div class="form-group">
-        <label for="modelSelect">Model</label>
-        <input type="text" id="modelSelect" list="modelList" placeholder="e.g. google/gemini-2.0-flash-001" />
-        <datalist id="modelList">
-          <option value="google/gemini-2.0-flash-001">
-          <option value="anthropic/claude-3.5-sonnet:beta">
-          <option value="openai/gpt-4o">
-          <option value="deepseek/deepseek-chat">
-        </datalist>
+      <!-- Chat bubbles -->
+      <div id="chatContainer" class="chat-container"></div>
+
+      <!-- Input area -->
+      <div class="chat-input-row">
+        <textarea id="userPromptText" placeholder="Send a message..." rows="2"></textarea>
+        <button id="promptBtn" disabled title="Send">▶</button>
       </div>
 
-      <div class="form-group">
-        <button id="promptBtn" disabled>Send</button>
-        <button id="resetBtn" class="secondary" disabled>Reset</button>
-        <button id="traceBtn" class="secondary">Copy trace</button>
+      <div class="form-group settings-group">
+        <details>
+          <summary>⚙️ Settings</summary>
+          <div class="settings-body">
+            <div class="form-group">
+              <label for="modelSelect">Model</label>
+              <input type="text" id="modelSelect" list="modelList" placeholder="e.g. google/gemini-2.0-flash-001" />
+              <datalist id="modelList">
+                <option value="google/gemini-2.0-flash-001">
+                <option value="anthropic/claude-3.5-sonnet:beta">
+                <option value="openai/gpt-4o">
+                <option value="deepseek/deepseek-chat">
+              </datalist>
+            </div>
+
+            <div class="form-group">
+              <label for="apiKey">OpenRouter API Key</label>
+              <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
+              <div class="button-row">
+                <button id="saveSettingsBtn" class="secondary">Save & Test Connection</button>
+                <button id="traceBtn" class="secondary">Copy trace</button>
+              </div>
+              <div id="connectionStatus" class="status-message"></div>
+            </div>
+          </div>
+        </details>
       </div>
+    </div>
 
-      <div class="form-group border-top">
-        <label for="apiKey">OpenRouter API Key</label>
-        <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
-        <div class="button-row">
-          <button id="saveSettingsBtn" class="secondary">Save & Test Connection</button>
-        </div>
-        <div id="connectionStatus" class="status-message"></div>
-      </div>
-
-      <pre id="promptResults"></pre>
-
+    <h2 class="collapsible-header">Manual Tool Execution</h2>
+    <div class="section-content">
       <div class="form-group">
         <label for="toolNames">Tool</label>
         <select id="toolNames"></select>
