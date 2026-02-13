@@ -15,8 +15,14 @@ const RICH_TEXT_SELECTORS = [
   '[role="textbox"]:not(input):not(textarea)',
   // Platform-specific selectors
   '[data-testid*="tweetTextarea" i]',
+  '[data-testid^="tweetTextarea_"]',
+  '[data-testid*="dmComposerTextInput" i]',
+  '[data-testid*="dmComposer" i]',
   '[data-testid="post-composer" i]',
   '[aria-label*="post" i][contenteditable]',
+  '[aria-label*="post your reply" i]',
+  '[aria-label*="post your message" i]',
+  '[aria-label*="direct message" i]',
   '[aria-label*="What\'s on your mind" i]',
   '[aria-label*="Start a post" i]',
   '[aria-label*="Avvia un post" i]',
@@ -90,8 +96,9 @@ export class RichTextScanner extends BaseScanner {
       // Skip elements that are NOT actual editing surfaces — aria-label selectors
       // (e.g. "[aria-label*='Start a post']") can match trigger buttons
       const label = this.getLabel(el);
-      const isComment = /comment|reply|risposta|commento|rispondi/i.test(label || '');
-      const isMessage = /message|messaggio|dm|chat|invia messaggio/i.test(label || '');
+      const semanticText = this.buildSemanticText(el, label);
+      const isComment = /comment|reply|risposta|commento|rispondi|tweetdetail/i.test(semanticText);
+      const isMessage = /message|messaggio|dm|chat|invia messaggio|composer/i.test(semanticText);
       const editable = this.isEditableSurface(el);
       const isCommentTrigger = isComment && this.isLikelyEditorTrigger(el);
       const isMessageTrigger = isMessage && this.isLikelyEditorTrigger(el);
@@ -172,5 +179,24 @@ export class RichTextScanner extends BaseScanner {
       return true;
     }
     return false;
+  }
+
+  private buildSemanticText(el: Element, label: string): string {
+    const ariaLabel = el.getAttribute('aria-label') || '';
+    const placeholder = (el as HTMLInputElement).placeholder || '';
+    const ariaPlaceholder = el.getAttribute('aria-placeholder') || '';
+    const testId = el.getAttribute('data-testid') || '';
+    const className = el.getAttribute('class') || '';
+
+    return [
+      label,
+      ariaLabel,
+      placeholder,
+      ariaPlaceholder,
+      testId,
+      className,
+    ]
+      .join(' ')
+      .toLowerCase();
   }
 }

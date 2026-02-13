@@ -56,6 +56,27 @@ const PLATFORM_MAP: ReadonlyArray<{ re: RegExp; name: string }> = [
   { re: /youtube/i, name: 'youtube' },
 ];
 
+const X_TESTID_RULES: ReadonlyArray<{
+  token: string;
+  action: SocialActionType;
+}> = [
+  { token: 'reply', action: 'comment' },
+  { token: 'retweet', action: 'share' },
+  { token: 'unretweet', action: 'share' },
+  { token: 'quote', action: 'share' },
+  { token: 'share', action: 'share' },
+  { token: 'like', action: 'like' },
+  { token: 'unlike', action: 'like' },
+  { token: 'userfollow', action: 'follow' },
+  { token: 'userunfollow', action: 'follow' },
+  { token: 'follow', action: 'follow' },
+  { token: 'bookmark', action: 'save' },
+  { token: 'removebookmark', action: 'save' },
+  { token: 'dm', action: 'message' },
+  { token: 'message', action: 'message' },
+  { token: 'senddm', action: 'message' },
+];
+
 export class SocialScanner extends BaseScanner {
   readonly category = 'social-action' as const;
 
@@ -72,11 +93,16 @@ export class SocialScanner extends BaseScanner {
         '[data-testid*="like" i]',
         '[data-testid*="share" i]',
         '[data-testid*="retweet" i]',
+        '[data-testid*="unretweet" i]',
         '[data-testid*="follow" i]',
+        '[data-testid*="userfollow" i]',
+        '[data-testid*="userunfollow" i]',
         '[data-testid*="comment" i]',
         '[data-testid*="reply" i]',
         '[data-testid*="message" i]',
+        '[data-testid*="dm" i]',
         '[data-testid*="save" i]',
+        '[data-testid*="bookmark" i]',
         '[data-icon="send"]',
         '[aria-label*="whatsapp" i]',
       ].join(', '),
@@ -93,7 +119,7 @@ export class SocialScanner extends BaseScanner {
       if (btn.getAttribute('role') === 'textbox') continue;
 
       const label = (btn.getAttribute('aria-label') || '').trim();
-      const testId = (btn.getAttribute('data-testid') || '').toLowerCase();
+      const testId = this.resolveTestId(btn);
       const text = (btn.textContent || '').trim();
       const className = (btn.getAttribute('class') || '').toLowerCase();
       const href = (btn.getAttribute('href') || '').toLowerCase();
@@ -101,7 +127,15 @@ export class SocialScanner extends BaseScanner {
       if (!label && !testId && !text && !className && !href && !dataIcon) continue;
 
       // Classify by label or data-testid
-      const actionType = this.classify({ label, text, testId, className, href, dataIcon });
+      const actionType = this.classify({
+        platform,
+        label,
+        text,
+        testId,
+        className,
+        href,
+        dataIcon,
+      });
       if (!actionType) continue;
 
       // Build a short, clean slug
@@ -133,6 +167,7 @@ export class SocialScanner extends BaseScanner {
   /** Classify a candidate element into a social action type */
   private classify(
     ctx: {
+      platform: string;
       label: string;
       text: string;
       testId: string;
@@ -141,6 +176,14 @@ export class SocialScanner extends BaseScanner {
       dataIcon: string;
     },
   ): SocialActionType | null {
+    if (ctx.platform === 'x') {
+      for (const rule of X_TESTID_RULES) {
+        if (ctx.testId.includes(rule.token)) {
+          return rule.action;
+        }
+      }
+    }
+
     const joined = [
       ctx.label,
       ctx.text,
@@ -164,7 +207,12 @@ export class SocialScanner extends BaseScanner {
     if (COMMENT_RE.test(joined) || joined.includes('reply') || joined.includes('comment')) {
       return 'comment';
     }
-    if (MESSAGE_RE.test(joined) || joined.includes('data-icon="send"') || joined.includes('send')) {
+    if (
+      MESSAGE_RE.test(joined) ||
+      joined.includes('data-icon="send"') ||
+      joined.includes('direct message') ||
+      joined.includes('dm')
+    ) {
       return 'message';
     }
     if (SAVE_RE.test(joined)) {
@@ -190,5 +238,20 @@ export class SocialScanner extends BaseScanner {
       if (row.re.test(lower)) return row.name;
     }
     return 'social';
+  }
+
+  private resolveTestId(el: Element): string {
+    const own = el.getAttribute('data-testid');
+    if (own) return own.toLowerCase();
+
+    const closest = el.closest('[data-testid]');
+    const closestTestId = closest?.getAttribute('data-testid');
+    if (closestTestId) return closestTestId.toLowerCase();
+
+    const child = el.querySelector('[data-testid]');
+    const childTestId = child?.getAttribute('data-testid');
+    if (childTestId) return childTestId.toLowerCase();
+
+    return '';
   }
 }

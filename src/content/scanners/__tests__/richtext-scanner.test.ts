@@ -56,4 +56,27 @@ describe('RichTextScanner', () => {
 
     expect(commentTool).toBeDefined();
   });
+
+  it('detects x.com reply and dm composers', () => {
+    const replyComposer = document.createElement('div');
+    replyComposer.setAttribute('contenteditable', 'true');
+    replyComposer.setAttribute('role', 'textbox');
+    replyComposer.setAttribute('data-testid', 'tweetTextarea_0');
+    replyComposer.setAttribute('aria-label', 'Post your reply');
+    makeVisible(replyComposer);
+
+    const dmComposer = document.createElement('div');
+    dmComposer.setAttribute('contenteditable', 'true');
+    dmComposer.setAttribute('role', 'textbox');
+    dmComposer.setAttribute('data-testid', 'dmComposerTextInput');
+    dmComposer.setAttribute('aria-label', 'Direct message');
+    makeVisible(dmComposer);
+
+    document.body.append(replyComposer, dmComposer);
+
+    const tools = new RichTextScanner().scan(document);
+
+    expect(tools.some((tool) => tool.name.startsWith('richtext.comment-'))).toBe(true);
+    expect(tools.some((tool) => tool.name.startsWith('richtext.message-'))).toBe(true);
+  });
 });

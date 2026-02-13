@@ -71,4 +71,40 @@ describe('SocialScanner', () => {
     const tools = new SocialScanner().scan(document);
     expect(tools.length).toBe(0);
   });
+
+  it('detects x.com actions using data-testid tokens', () => {
+    const reply = document.createElement('div');
+    reply.setAttribute('role', 'button');
+    reply.setAttribute('data-testid', 'reply');
+    reply.setAttribute('aria-label', 'Reply');
+    makeVisible(reply);
+
+    const repost = document.createElement('div');
+    repost.setAttribute('role', 'button');
+    repost.setAttribute('data-testid', 'retweet');
+    repost.setAttribute('aria-label', 'Repost');
+    makeVisible(repost);
+
+    const bookmark = document.createElement('div');
+    bookmark.setAttribute('role', 'button');
+    bookmark.setAttribute('data-testid', 'bookmark');
+    bookmark.setAttribute('aria-label', 'Bookmark');
+    makeVisible(bookmark);
+
+    const dm = document.createElement('div');
+    dm.setAttribute('role', 'button');
+    dm.setAttribute('data-testid', 'sendDMFromProfile');
+    dm.setAttribute('aria-label', 'Direct message');
+    makeVisible(dm);
+
+    document.body.append(reply, repost, bookmark, dm);
+
+    const tools = new SocialScanner().scan(document);
+    const names = tools.map((tool) => tool.name);
+
+    expect(names.some((name) => name.startsWith('social.comment-'))).toBe(true);
+    expect(names.some((name) => name.startsWith('social.share-'))).toBe(true);
+    expect(names.some((name) => name.startsWith('social.save-'))).toBe(true);
+    expect(names.some((name) => name.startsWith('social.message-'))).toBe(true);
+  });
 });
