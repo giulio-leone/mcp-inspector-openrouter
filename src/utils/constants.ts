@@ -118,6 +118,9 @@ export const STORAGE_KEY_PLAN_MODE = 'wmcp_plan_mode';
 /** Key for YOLO mode (auto-execute all tools without confirmation) */
 export const STORAGE_KEY_YOLO_MODE = 'wmcp_yolo_mode';
 
+/** Key for orchestrator mode (use hexagonal AgentOrchestrator instead of legacy tool-loop) */
+export const STORAGE_KEY_ORCHESTRATOR_MODE = 'wmcp_orchestrator_mode';
+
 // ── Timing ──
 
 /** Debounce delay for DOM mutation observer (ms) */

@@ -113,6 +113,21 @@ export interface ContextSummary {
   readonly summary: string;
 }
 
+// ── Orchestrator Event Types ──
+
+/** Event emitted by the orchestrator during execution */
+export type OrchestratorEvent =
+  | { readonly type: 'tool_call'; readonly name: string; readonly args: Record<string, unknown> }
+  | { readonly type: 'tool_result'; readonly name: string; readonly data: unknown; readonly success: boolean }
+  | { readonly type: 'tool_error'; readonly name: string; readonly error: string }
+  | { readonly type: 'ai_response'; readonly text: string; readonly reasoning?: string }
+  | { readonly type: 'navigation'; readonly toolName: string }
+  | { readonly type: 'timeout' }
+  | { readonly type: 'max_iterations' };
+
+/** Callback for orchestrator events */
+export type OrchestratorEventListener = (event: OrchestratorEvent) => void;
+
 // ── Re-exports for convenience ──
 
 export type {

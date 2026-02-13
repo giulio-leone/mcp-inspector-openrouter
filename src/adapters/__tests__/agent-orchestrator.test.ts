@@ -352,4 +352,165 @@ describe('AgentOrchestrator', () => {
     expect(result.text).toContain('Reached maximum tool iterations');
     spy.mockRestore();
   });
+
+  // ── Observer (onEvent) ──
+
+  describe('onEvent observer', () => {
+    it('emits ai_response when no function calls', async () => {
+      mocks.mockChat.sendMessage.mockResolvedValueOnce({ text: 'Hello!', reasoning: 'thought' });
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('hi', makeContext());
+
+      expect(events).toEqual([
+        { type: 'ai_response', text: 'Hello!', reasoning: 'thought' },
+      ]);
+    });
+
+    it('emits tool_call and tool_result on successful execution', async () => {
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({ functionCalls: [{ id: 'fc1', name: 'media.play', args: { speed: 2 } }] })
+        .mockResolvedValueOnce({ text: 'Done' });
+      mocks.toolPort.execute.mockResolvedValueOnce({ success: true, data: 'played' });
+
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('play', makeContext());
+
+      expect(events[0]).toEqual({ type: 'tool_call', name: 'media.play', args: { speed: 2 } });
+      expect(events[1]).toEqual({ type: 'tool_result', name: 'media.play', data: 'played', success: true });
+      expect(events[2]).toEqual({ type: 'ai_response', text: 'Done', reasoning: undefined });
+    });
+
+    it('emits tool_result with success:false on failed execution', async () => {
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({ functionCalls: [{ id: 'fc1', name: 'media.play', args: {} }] })
+        .mockResolvedValueOnce({ text: 'Sorry' });
+      mocks.toolPort.execute.mockResolvedValueOnce({ success: false, error: 'not found' });
+
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('play', makeContext());
+
+      expect(events[1]).toEqual({ type: 'tool_result', name: 'media.play', data: 'not found', success: false });
+    });
+
+    it('emits tool_error on exception', async () => {
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({ functionCalls: [{ id: 'fc1', name: 'media.play', args: {} }] })
+        .mockResolvedValueOnce({ text: 'Error handled' });
+      mocks.toolPort.execute.mockRejectedValueOnce(new Error('Tab crashed'));
+
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('play', makeContext());
+
+      expect(events[0]).toEqual({ type: 'tool_call', name: 'media.play', args: {} });
+      expect(events[1]).toEqual({ type: 'tool_error', name: 'media.play', error: 'Tab crashed' });
+    });
+
+    it('emits navigation event', async () => {
+      mockedIsNavigationTool.mockReturnValue(true);
+      mockedWaitForPageAndRescan.mockResolvedValue({ pageContext: null, tools: [] });
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({ functionCalls: [{ id: 'fc1', name: 'nav.goto', args: {} }] })
+        .mockResolvedValueOnce({ text: 'Navigated' });
+      mocks.toolPort.execute.mockResolvedValueOnce({ success: true, data: 'ok' });
+
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('navigate', makeContext());
+
+      expect(events).toContainEqual({ type: 'navigation', toolName: 'nav.goto' });
+    });
+
+    it('emits timeout event', async () => {
+      let callCount = 0;
+      const spy = vi.spyOn(performance, 'now');
+      spy.mockImplementation(() => (++callCount <= 1 ? 0 : 70_000));
+
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({ functionCalls: [{ id: 'fc1', name: 't', args: {} }] })
+        .mockResolvedValueOnce({ functionCalls: [{ id: 'fc2', name: 't', args: {} }] });
+
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('go', makeContext());
+
+      expect(events).toContainEqual({ type: 'timeout' });
+      spy.mockRestore();
+    });
+
+    it('emits max_iterations event', async () => {
+      for (let i = 0; i < 11; i++) {
+        mocks.mockChat.sendMessage.mockResolvedValueOnce({
+          functionCalls: [{ id: `fc${i}`, name: 'tool', args: {} }],
+        });
+      }
+
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('go', makeContext());
+
+      expect(events).toContainEqual({ type: 'max_iterations' });
+    });
+
+    it('unsubscribe stops receiving events', async () => {
+      mocks.mockChat.sendMessage.mockResolvedValueOnce({ text: 'Hello' });
+      const events: any[] = [];
+      const unsub = orchestrator.onEvent((e) => events.push(e));
+      unsub();
+
+      await orchestrator.run('hi', makeContext());
+
+      expect(events).toEqual([]);
+    });
+
+    it('isolates listener errors', async () => {
+      mocks.mockChat.sendMessage.mockResolvedValueOnce({ text: 'Hello' });
+      const events: any[] = [];
+      orchestrator.onEvent(() => { throw new Error('boom'); });
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('hi', makeContext());
+
+      expect(events.length).toBe(1);
+    });
+
+    it('dispose clears listeners', async () => {
+      const events: any[] = [];
+      orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.dispose();
+
+      // Run the SAME disposed instance — chatFactory creates a new chat
+      mocks.mockChat.sendMessage.mockResolvedValueOnce({ text: 'Hello' });
+      await orchestrator.run('hi', makeContext());
+
+      // Listener was cleared by dispose — should receive nothing
+      expect(events).toEqual([]);
+    });
+
+    it('listener during emit unsub does not skip others', async () => {
+      mocks.mockChat.sendMessage.mockResolvedValueOnce({ text: 'Hello' });
+      const events: any[] = [];
+      let unsub2: () => void;
+
+      // Listener A unsubscribes listener B mid-emit
+      orchestrator.onEvent(() => { unsub2(); });
+      unsub2 = orchestrator.onEvent((e) => events.push(e));
+
+      await orchestrator.run('hi', makeContext());
+
+      // Listener B should still fire because emit snapshots the set
+      expect(events.length).toBe(1);
+    });
+  });
 });
