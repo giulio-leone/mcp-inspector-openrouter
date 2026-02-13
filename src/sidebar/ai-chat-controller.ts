@@ -302,7 +302,7 @@ export class AIChatController {
     if (useOrchestrator) {
       await this.runOrchestrator(
         chat, userMessage, pageContext, allTools, mentionContexts,
-        tab.id, targetTabId, planManager, convCtrl, setCurrentTools, pinnedConv,
+        tab.id, planManager, convCtrl, setCurrentTools, pinnedConv,
       );
     } else {
       const initialResult = await chat.sendMessage({ message: userMessage, config });
@@ -333,7 +333,6 @@ export class AIChatController {
     allTools: CleanTool[],
     mentionContexts: { tabId: number; title: string; context: PageContext }[],
     originTabId: number,
-    targetTabId: number,
     planManager: PlanManager,
     convCtrl: ConversationController,
     setCurrentTools: (tools: CleanTool[]) => void,
