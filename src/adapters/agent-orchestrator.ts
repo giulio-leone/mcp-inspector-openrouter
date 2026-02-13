@@ -13,6 +13,7 @@ import type { IAgentPort } from '../ports/agent.port';
 import type { IToolExecutionPort } from '../ports/tool-execution.port';
 import type { IPlanningPort } from '../ports/planning.port';
 import type { IContextPort } from '../ports/context.port';
+import type { IContextManagerPort } from '../ports/context-manager.port';
 import type {
   AgentContext,
   AgentResult,
@@ -36,6 +37,7 @@ export interface OrchestratorDeps {
   readonly toolPort: IToolExecutionPort;
   readonly contextPort: IContextPort;
   readonly planningPort: IPlanningPort;
+  readonly contextManager?: IContextManagerPort;
   readonly chatFactory: () => OpenRouterChat;
   readonly buildConfig: (ctx: PageContext | null, tools: readonly CleanTool[]) => ChatConfig;
 }
@@ -84,6 +86,9 @@ export class AgentOrchestrator implements IAgentPort {
   async run(prompt: string | ContentPart[], context: AgentContext): Promise<AgentResult> {
     const { toolPort, contextPort, planningPort, buildConfig, chatFactory } = this.deps;
     const { tabId, mentionContexts } = context;
+
+    // Clear offloaded content from prior run to prevent unbounded growth
+    this.deps.contextManager?.reset();
 
     const chat = chatFactory();
     this.chat = chat;
@@ -170,6 +175,12 @@ export class AgentOrchestrator implements IAgentPort {
           const responseData = result.success
             ? { result: result.data }
             : { error: result.error ?? 'Tool execution failed' };
+
+          // Offload large tool results if contextManager is wired
+          if (result.success && this.deps.contextManager && typeof responseData.result === 'string') {
+            (responseData as Record<string, unknown>).result =
+              this.deps.contextManager.processToolResult(fc.name, responseData.result as string);
+          }
 
           toolResponses.push(this.toToolResponse(fc, responseData));
 

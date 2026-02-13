@@ -8,6 +8,7 @@ export type { IToolExecutionPort } from './tool-execution.port';
 export type { IPlanningPort } from './planning.port';
 export type { ISubagentPort } from './subagent.port';
 export type { IContextPort } from './context.port';
+export type { IContextManagerPort } from './context-manager.port';
 
 // Shared types
 export type {
@@ -26,6 +27,7 @@ export type {
   SubagentInfo,
   SubagentResult,
   SubagentTask,
+  TokenUsage,
   ToolCallRecord,
   ToolCallResult,
   ToolDefinition,

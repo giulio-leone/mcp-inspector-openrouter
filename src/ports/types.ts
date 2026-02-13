@@ -113,6 +113,13 @@ export interface ContextSummary {
   readonly summary: string;
 }
 
+/** Cumulative token usage snapshot */
+export interface TokenUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly totalTokens: number;
+}
+
 // ── Typed Event Map ──
 
 /** Typed event map for the agent orchestrator */
