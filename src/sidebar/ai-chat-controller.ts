@@ -14,6 +14,7 @@ import {
   STORAGE_KEY_MODEL,
   STORAGE_KEY_SCREENSHOT_ENABLED,
   STORAGE_KEY_ORCHESTRATOR_MODE,
+  STORAGE_KEY_YOLO_MODE,
   DEFAULT_MODEL,
 } from '../utils/constants';
 import * as Store from './chat-store';
@@ -22,7 +23,10 @@ import type { PlanManager } from './plan-manager';
 import { executeToolLoop } from './tool-loop';
 import { AgentOrchestrator } from '../adapters/agent-orchestrator';
 import { ChromeToolAdapter } from '../adapters/chrome-tool-adapter';
+import { ApprovalGateAdapter } from '../adapters/approval-gate-adapter';
 import { PlanningAdapter } from '../adapters/planning-adapter';
+import { getSecurityTier } from '../content/merge';
+import { showApprovalDialog, type SecurityDialogRefs } from './security-dialog';
 import type { ConversationController } from './conversation-controller';
 import { createMentionAutocomplete, type MentionAutocomplete, type TabMention } from './tab-mention';
 import { logger } from './debug-logger';
@@ -36,6 +40,7 @@ export interface AIChatDeps {
   setCurrentTools: (tools: CleanTool[]) => void;
   convCtrl: ConversationController;
   planManager: PlanManager;
+  securityDialogRefs: SecurityDialogRefs;
 }
 
 export class AIChatController {
@@ -338,11 +343,31 @@ export class AIChatController {
     setCurrentTools: (tools: CleanTool[]) => void,
     pinnedConv: { site: string; convId: string },
   ): Promise<void> {
-    const toolPort = new ChromeToolAdapter();
+    const chromeToolPort = new ChromeToolAdapter();
     const planningAdapter = new PlanningAdapter(planManager);
 
+    // Build tool name → security tier lookup from current tools
+    const toolMap = new Map(allTools.map((t) => [t.name, t]));
+    const resolveTier = (name: string): number => {
+      const tool = toolMap.get(name);
+      return tool ? getSecurityTier(tool) : 1; // default: navigation
+    };
+
+    // Read YOLO mode setting
+    const yoloSettings = await chrome.storage.local.get([STORAGE_KEY_YOLO_MODE]);
+    const yoloMode = !!yoloSettings[STORAGE_KEY_YOLO_MODE];
+
+    // Wrap tool port with approval gate
+    const { securityDialogRefs } = this.deps;
+    const approvalGate = new ApprovalGateAdapter(
+      chromeToolPort,
+      resolveTier,
+      (req) => showApprovalDialog(securityDialogRefs, req.toolName, req.tier),
+    );
+    if (yoloMode) approvalGate.setAutoApprove(true);
+
     const orchestrator = new AgentOrchestrator({
-      toolPort,
+      toolPort: approvalGate,
       contextPort: {} as any, // Not used during run() — context is passed inline
       planningPort: planningAdapter,
       chatFactory: () => chat,

@@ -95,6 +95,15 @@ $<HTMLButtonElement>('deleteChatBtn').onclick = (): void => convCtrl.deleteConve
 conversationSelect.onchange = (): void => convCtrl.onSelectChange();
 
 // AI chat controller
+const securityDialogRefs: SecurityDialogRefs = {
+  dialog: $<HTMLDialogElement>('securityDialog'),
+  toolName: $<HTMLSpanElement>('dialogToolName'),
+  desc: $<HTMLParagraphElement>('dialogDesc'),
+  cancelBtn: $<HTMLButtonElement>('dialogCancel'),
+  confirmBtn: $<HTMLButtonElement>('dialogConfirm'),
+};
+initSecurityDialog(securityDialogRefs);
+
 const aiChat = new AIChatController({
   userPromptText: $<HTMLTextAreaElement>('userPromptText'),
   promptBtn: $<HTMLButtonElement>('promptBtn'),
@@ -103,6 +112,7 @@ const aiChat = new AIChatController({
   getCurrentTools: (): CleanTool[] => currentTools,
   setCurrentTools: (t): void => { currentTools = t; },
   convCtrl, planManager,
+  securityDialogRefs,
 });
 void aiChat.init();
 aiChat.setupListeners();
@@ -118,14 +128,6 @@ $<HTMLButtonElement>('debugLogBtn').onclick = (): void => {
 
 // Module DOM refs
 const toolListRefs: ToolListDomRefs = { statusDiv, tbody, thead, toolNames, inputArgsText, executeBtn, copyToClipboard };
-const securityDialogRefs: SecurityDialogRefs = {
-  dialog: $<HTMLDialogElement>('securityDialog'),
-  toolName: $<HTMLSpanElement>('dialogToolName'),
-  desc: $<HTMLParagraphElement>('dialogDesc'),
-  cancelBtn: $<HTMLButtonElement>('dialogCancel'),
-  confirmBtn: $<HTMLButtonElement>('dialogConfirm'),
-};
-initSecurityDialog(securityDialogRefs);
 
 // Initial connection
 (async (): Promise<void> => {
