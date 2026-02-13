@@ -11,6 +11,24 @@ export type { IContextPort } from './context.port';
 export type { IContextManagerPort } from './context-manager.port';
 export type { IApprovalGatePort, ApprovalDecision, ApprovalRequest } from './approval-gate.port';
 export type { ITabSessionPort, TabContext } from './tab-session.port';
+export type {
+  INavigationPlanPort,
+  NavigationStepType,
+  StepErrorStrategy,
+  StepPrecondition,
+  NavigationStepBase,
+  OpenTabStep,
+  NavigateStep,
+  ExtractStep,
+  FillStep,
+  WaitStep,
+  CloseTabStep,
+  NavigationStep,
+  StepStatus,
+  StepResult,
+  NavigationPlan,
+  PlanExecutionState,
+} from './navigation-plan.port';
 
 // Shared types
 export type {

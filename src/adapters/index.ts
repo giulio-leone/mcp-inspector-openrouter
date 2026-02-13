@@ -15,3 +15,4 @@ export { TypedEventBus } from './event-bus';
 export { ApprovalGateAdapter } from './approval-gate-adapter';
 export type { ApprovalCallback, TierResolver } from './approval-gate-adapter';
 export { TabSessionAdapter } from './tab-session-adapter';
+export { NavigationPlanAdapter, resolveTemplate } from './navigation-plan-adapter';
