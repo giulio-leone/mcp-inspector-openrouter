@@ -4,28 +4,22 @@ import '../components/theme-provider';
 import '../components/chat-container';
 import '../components/chat-header';
 import '../components/chat-input';
+import '../components/tool-table';
 import type { ChatHeader } from '../components/chat-header';
 import type { ChatInput } from '../components/chat-input';
+import type { ToolTable } from '../components/tool-table';
 import type { CleanTool } from '../types';
 import { STORAGE_KEY_LOCK_MODE, STORAGE_KEY_PLAN_MODE } from '../utils/constants';
 import { ICONS } from './icons';
 import * as Store from './chat-store';
 import { PlanManager } from './plan-manager';
 import { ConversationController } from './conversation-controller';
-import { renderToolList, updateDefaultValueForInputArgs, toolsAsScriptToolConfig, toolsAsJSON, type ToolListDomRefs } from './tool-list-handler';
 import { initSecurityDialog, handleConfirmExecution, type SecurityDialogRefs } from './security-dialog';
 import { AIChatController } from './ai-chat-controller';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-const statusDiv = $<HTMLDivElement>('status');
-const tbody = $<HTMLTableSectionElement>('tableBody');
-const thead = $<HTMLTableRowElement>('tableHeaderRow');
-const copyToClipboard = $<HTMLDivElement>('copyToClipboard');
-const toolNames = $<HTMLSelectElement>('toolNames');
-const inputArgsText = $<HTMLTextAreaElement>('inputArgsText');
-const executeBtn = $<HTMLButtonElement>('executeBtn');
-const toolResults = $<HTMLPreElement>('toolResults');
+const toolTable = $<ToolTable>('toolTable');
 const lockToggle = $<HTMLInputElement>('lockToggle');
 const lockLabel = $<HTMLSpanElement>('lockLabel');
 const chatContainer = $<HTMLElement>('chatContainer');
@@ -145,9 +139,6 @@ chatInput.addEventListener('download-debug-log', (): void => {
   logger.download();
 });
 
-// Module DOM refs
-const toolListRefs: ToolListDomRefs = { statusDiv, tbody, thead, toolNames, inputArgsText, executeBtn, copyToClipboard };
-
 // Initial connection
 (async (): Promise<void> => {
   try {
@@ -159,8 +150,7 @@ const toolListRefs: ToolListDomRefs = { statusDiv, tbody, thead, toolNames, inpu
     await chrome.tabs.sendMessage(tab.id, { action: 'SET_LOCK_MODE', inputArgs: { locked: lockToggle.checked } });
     convCtrl.loadConversations();
   } catch (error) {
-    statusDiv.textContent = `Initialization error: ${(error as Error).message}`;
-    statusDiv.hidden = false;
+    toolTable.statusMessage = `Initialization error: ${(error as Error).message}`;
   }
 })();
 
@@ -168,14 +158,14 @@ const toolListRefs: ToolListDomRefs = { statusDiv, tbody, thead, toolNames, inpu
 chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'loading') return;
   currentTools = [];
-  tbody.innerHTML = '<tr><td colspan="100%"><i>Refreshing...</i></td></tr>';
-  toolNames.innerHTML = '';
+  toolTable.tools = [];
+  toolTable.loading = true;
   if (!convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''))) convCtrl.loadConversations();
 });
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   currentTools = [];
-  tbody.innerHTML = '<tr><td colspan="100%"><i>Switched tab, refreshing tools...</i></td></tr>';
-  toolNames.innerHTML = '';
+  toolTable.tools = [];
+  toolTable.loading = true;
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     if (!isInjectableUrl(tab.url)) return;
@@ -199,33 +189,30 @@ chrome.runtime.onMessage.addListener(
     if (sender.tab && tab?.id && sender.tab.id !== tab.id) return;
     const haveNewTools = JSON.stringify(currentTools) !== JSON.stringify(msg.tools);
     currentTools = msg.tools ?? [];
-    renderToolList(toolListRefs, currentTools, msg.message, msg.url ?? tab?.url);
+    toolTable.tools = currentTools;
+    toolTable.statusMessage = msg.message ?? '';
+    toolTable.pageUrl = msg.url ?? tab?.url ?? '';
+    toolTable.loading = false;
     if (haveNewTools) void aiChat.suggestUserPrompt();
   },
 );
-tbody.ondblclick = (): void => { tbody.classList.toggle('prettify'); };
 
-// Copy buttons
-$<HTMLSpanElement>('copyAsScriptToolConfig').onclick = async (): Promise<void> => {
-  await navigator.clipboard.writeText(toolsAsScriptToolConfig(currentTools));
-};
-$<HTMLSpanElement>('copyAsJSON').onclick = async (): Promise<void> => {
-  await navigator.clipboard.writeText(toolsAsJSON(currentTools));
-};
+// Copy buttons — handled via component event
+toolTable.addEventListener('copy-tools', async (e): Promise<void> => {
+  const { format } = (e as CustomEvent).detail;
+  await navigator.clipboard.writeText(toolTable.getClipboardText(format));
+});
 
-// Manual tool execution
-toolNames.onchange = (): void => updateDefaultValueForInputArgs(toolNames, inputArgsText);
-executeBtn.onclick = async (): Promise<void> => {
-  toolResults.textContent = '';
+// Manual tool execution — handled via component event
+toolTable.addEventListener('execute-tool', async (e): Promise<void> => {
+  const { name, args } = (e as CustomEvent).detail;
   const tab = await getCurrentTab();
-  if (!tab?.id) return;
-  const name = toolNames.selectedOptions[0]?.value;
-  if (!name) return;
-  const result = await chrome.tabs.sendMessage(tab.id, { action: 'EXECUTE_TOOL', name, inputArgs: inputArgsText.value });
-  if (result !== null) { toolResults.textContent = String(result); return; }
+  if (!tab?.id || !name) return;
+  const result = await chrome.tabs.sendMessage(tab.id, { action: 'EXECUTE_TOOL', name, inputArgs: args });
+  if (result !== null) { toolTable.setToolResults(String(result)); return; }
   await waitForPageLoad(tab.id);
-  toolResults.textContent = String(await chrome.tabs.sendMessage(tab.id, { action: 'GET_CROSS_DOCUMENT_SCRIPT_TOOL_RESULT' }));
-};
+  toolTable.setToolResults(String(await chrome.tabs.sendMessage(tab.id, { action: 'GET_CROSS_DOCUMENT_SCRIPT_TOOL_RESULT' })));
+});
 
 function waitForPageLoad(tabId: number): Promise<void> {
   return new Promise((resolve) => {
