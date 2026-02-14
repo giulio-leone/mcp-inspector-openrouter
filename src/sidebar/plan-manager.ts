@@ -20,7 +20,7 @@ export class PlanManager {
 
   constructor(
     private readonly planToggle: HTMLButtonElement | null,
-    private readonly chatContainer: HTMLDivElement,
+    private readonly chatContainer: HTMLElement,
   ) {
     this.initToggle();
   }

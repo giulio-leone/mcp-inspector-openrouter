@@ -1,6 +1,7 @@
 /** Sidebar entry — thin controller wiring up all modules. */
 
 import '../components/theme-provider';
+import '../components/chat-container';
 import type { CleanTool } from '../types';
 import { STORAGE_KEY_LOCK_MODE } from '../utils/constants';
 import { ICONS } from './icons';
@@ -24,7 +25,7 @@ const toolResults = $<HTMLPreElement>('toolResults');
 const lockToggle = $<HTMLInputElement>('lockToggle');
 const lockLabel = $<HTMLSpanElement>('lockLabel');
 const conversationSelect = $<HTMLSelectElement>('conversationSelect');
-const chatContainer = $<HTMLDivElement>('chatContainer');
+const chatContainer = $<HTMLElement>('chatContainer');
 const planToggle = $<HTMLButtonElement>('plan-toggle');
 
 // Tab switching

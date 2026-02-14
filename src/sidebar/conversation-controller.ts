@@ -15,13 +15,13 @@ export interface ConversationState {
 }
 
 export class ConversationController {
-  private readonly chatContainer: HTMLDivElement;
+  private readonly chatContainer: HTMLElement;
   private readonly conversationSelect: HTMLSelectElement;
 
   state: ConversationState;
 
   constructor(
-    chatContainer: HTMLDivElement,
+    chatContainer: HTMLElement,
     conversationSelect: HTMLSelectElement,
     initialState: ConversationState,
   ) {
