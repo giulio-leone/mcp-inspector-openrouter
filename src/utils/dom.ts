@@ -94,12 +94,20 @@ export function querySelectorDeep(
 /**
  * Extract all form field name/value pairs from a form element.
  * Uses FormData for standard form serialization.
+ * Password values are masked for security.
  */
 export function getFormValues(
   form: HTMLFormElement,
 ): Record<string, string> {
-  return Object.fromEntries(new FormData(form).entries()) as Record<
-    string,
-    string
-  >;
+  const passwordFields = new Set<string>();
+  form.querySelectorAll('input[type="password"]').forEach(el => {
+    const name = (el as HTMLInputElement).name;
+    if (name) passwordFields.add(name);
+  });
+
+  const result: Record<string, string> = {};
+  for (const [key, val] of new FormData(form).entries()) {
+    result[key] = passwordFields.has(key) && val ? '••••' : String(val);
+  }
+  return result;
 }

@@ -23,6 +23,18 @@ export interface MediaLiveState {
   readonly playlistLength?: number;
 }
 
+/** Per-field detail for form field recognition */
+export interface FormFieldDetail {
+  readonly name: string;
+  readonly label: string;
+  readonly type: string;
+  readonly value: string;
+  readonly filled: boolean;
+  readonly required: boolean;
+  readonly valid: boolean;
+  readonly options?: readonly string[];
+}
+
 /** Live state for a tracked form on the page */
 export interface FormLiveState {
   readonly formId: string;
@@ -32,6 +44,7 @@ export interface FormLiveState {
   readonly dirtyFields: readonly string[];
   readonly hasValidationErrors: boolean;
   readonly completionPercent: number;
+  readonly fields: readonly FormFieldDetail[];
 }
 
 /** Live state for page navigation / scroll position */

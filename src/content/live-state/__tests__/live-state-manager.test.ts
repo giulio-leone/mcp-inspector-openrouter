@@ -45,6 +45,7 @@ const FORM_FIXTURE: FormLiveState = {
   dirtyFields: ['email'],
   hasValidationErrors: false,
   completionPercent: 50,
+  fields: [],
 };
 
 // ── Tests ──
