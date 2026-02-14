@@ -2,6 +2,7 @@
 
 import '../components/theme-provider';
 import '../components/tab-navigator';
+import '../components/tab-session-indicator';
 import '../components/chat-container';
 import '../components/chat-header';
 import '../components/chat-input';
@@ -12,6 +13,7 @@ import type { ChatInput } from '../components/chat-input';
 import type { StatusBar } from '../components/status-bar';
 import type { ToolTable } from '../components/tool-table';
 import type { TabNavigator } from '../components/tab-navigator';
+import type { TabSessionIndicator } from '../components/tab-session-indicator';
 import type { CleanTool } from '../types';
 import { STORAGE_KEY_LOCK_MODE, STORAGE_KEY_PLAN_MODE } from '../utils/constants';
 import { ICONS } from './icons';
@@ -22,6 +24,7 @@ import '../components/security-dialog';
 import type { SecurityDialog } from '../components/security-dialog';
 import { resetApprovalController } from './security-dialog';
 import { AIChatController } from './ai-chat-controller';
+import { TabSessionAdapter } from '../adapters/tab-session-adapter';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -33,6 +36,11 @@ const chatContainer = $<HTMLElement>('chatContainer');
 const chatHeader = $<ChatHeader>('chatHeader');
 const chatInput = $<ChatInput>('chatInput');
 const tabNavigator = $<TabNavigator>('tabNavigator');
+const sessionIndicator = $<TabSessionIndicator>('sessionIndicator');
+
+// Shared tab session adapter — tracks per-browser-tab context
+const tabSession = new TabSessionAdapter();
+tabSession.startSession();
 
 // Configure tab navigator with tab definitions
 tabNavigator.tabs = [
@@ -123,6 +131,7 @@ const aiChat = new AIChatController({
   setCurrentTools: (t): void => { currentTools = t; },
   convCtrl, planManager,
   securityDialogEl,
+  tabSession,
 });
 void aiChat.init();
 void chatInput.updateComplete.then(() => {
@@ -138,12 +147,29 @@ chatInput.addEventListener('download-debug-log', (): void => {
   logger.download();
 });
 
+// Helper: update session indicator UI
+function updateSessionIndicator(activeTabId?: number): void {
+  const contexts = tabSession.getAllContexts();
+  const resolvedActiveId = activeTabId
+    ?? (contexts.length > 0
+      ? [...contexts].sort((a, b) => b.timestamp - a.timestamp)[0].tabId
+      : undefined);
+  sessionIndicator.sessions = contexts.map(ctx => ({
+    tabId: ctx.tabId,
+    title: ctx.title,
+    active: ctx.tabId === resolvedActiveId,
+  }));
+  sessionIndicator.sessionActive = !!tabSession.getSessionId();
+}
+
 // Initial connection
 (async (): Promise<void> => {
   try {
     const tab = await getCurrentTab();
     if (!tab?.id || !isInjectableUrl(tab.url)) return;
     convCtrl.state.currentSite = Store.siteKey(tab.url!);
+    tabSession.setTabContext(tab.id, { url: tab.url!, title: tab.title ?? '', extractedData: {} });
+    updateSessionIndicator(tab.id);
     await ensureContentScript(tab.id);
     await chrome.tabs.sendMessage(tab.id, { action: 'LIST_TOOLS' });
     await chrome.tabs.sendMessage(tab.id, { action: 'SET_LOCK_MODE', inputArgs: { locked: lockToggle.checked } });
@@ -156,11 +182,16 @@ chatInput.addEventListener('download-debug-log', (): void => {
 
 // Tab change listeners
 chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
-  if (changeInfo.status !== 'loading') return;
-  currentTools = [];
-  toolTable.tools = [];
-  toolTable.loading = true;
-  if (!convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''))) convCtrl.loadConversations();
+  if (changeInfo.status === 'loading') {
+    currentTools = [];
+    toolTable.tools = [];
+    toolTable.loading = true;
+    if (!convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''))) convCtrl.loadConversations();
+  }
+  if (changeInfo.status === 'complete' && tab.id && tab.url && isInjectableUrl(tab.url)) {
+    tabSession.setTabContext(tab.id, { url: tab.url, title: tab.title ?? '', extractedData: {} });
+    updateSessionIndicator(tab.id);
+  }
 });
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   currentTools = [];
@@ -169,6 +200,8 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     if (!isInjectableUrl(tab.url)) return;
+    tabSession.setTabContext(activeInfo.tabId, { url: tab.url!, title: tab.title ?? '', extractedData: {} });
+    updateSessionIndicator(activeInfo.tabId);
     const sameSite = convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''));
     await ensureContentScript(activeInfo.tabId);
     await chrome.tabs.sendMessage(activeInfo.tabId, { action: 'LIST_TOOLS' });

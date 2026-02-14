@@ -26,7 +26,7 @@ import { AgentOrchestrator } from '../adapters/agent-orchestrator';
 import { ChromeToolAdapter } from '../adapters/chrome-tool-adapter';
 import { ApprovalGateAdapter } from '../adapters/approval-gate-adapter';
 import { PlanningAdapter } from '../adapters/planning-adapter';
-import { TabSessionAdapter } from '../adapters/tab-session-adapter';
+import type { ITabSessionPort } from '../ports/tab-session.port';
 import { getSecurityTier } from '../content/merge';
 import { showApprovalDialog } from './security-dialog';
 import type { SecurityDialog } from '../components/security-dialog';
@@ -45,6 +45,7 @@ export interface AIChatDeps {
   readonly convCtrl: ConversationController;
   readonly planManager: PlanManager;
   readonly securityDialogEl: SecurityDialog;
+  readonly tabSession: ITabSessionPort;
 }
 
 export class AIChatController {
@@ -301,9 +302,10 @@ export class AIChatController {
     // Determine target tab for tool execution
     const targetTabId = this.activeMentions.length > 0 ? this.activeMentions[0].tabId : tab.id;
 
-    // Check orchestrator mode feature flag
+    // Orchestrator is the default execution path.
+    // Users can opt-out by setting the storage key to `false`.
     const orchestratorSettings = await chrome.storage.local.get([STORAGE_KEY_ORCHESTRATOR_MODE]);
-    const useOrchestrator = !!orchestratorSettings[STORAGE_KEY_ORCHESTRATOR_MODE];
+    const useOrchestrator = orchestratorSettings[STORAGE_KEY_ORCHESTRATOR_MODE] !== false;
 
     if (useOrchestrator) {
       await this.runOrchestrator(
@@ -346,8 +348,8 @@ export class AIChatController {
   ): Promise<void> {
     const chromeToolPort = new ChromeToolAdapter();
     const planningAdapter = new PlanningAdapter(planManager);
-    const tabSession = new TabSessionAdapter();
-    tabSession.startSession();
+    const tabSession = this.deps.tabSession;
+    if (!tabSession.getSessionId()) tabSession.startSession();
 
     // Build tool name → security tier lookup from current tools
     const toolMap = new Map(allTools.map((t) => [t.name, t]));
@@ -369,11 +371,24 @@ export class AIChatController {
     );
     if (yoloMode) approvalGate.setAutoApprove(true);
 
+    // Non-owning proxy: delegates all methods to shared tabSession,
+    // except endSession() which is a no-op so dispose() won't destroy shared state
+    const sessionProxy: ITabSessionPort = {
+      startSession: () => tabSession.startSession(),
+      setTabContext: (id, ctx) => tabSession.setTabContext(id, ctx),
+      storeData: (id, k, v) => tabSession.storeData(id, k, v),
+      getTabContext: (id) => tabSession.getTabContext(id),
+      getAllContexts: () => tabSession.getAllContexts(),
+      buildContextSummary: () => tabSession.buildContextSummary(),
+      getSessionId: () => tabSession.getSessionId(),
+      endSession: () => {},
+    };
+
     const orchestrator = new AgentOrchestrator({
       toolPort: approvalGate,
       contextPort: {} as any, // Not used during run() — context is passed inline
       planningPort: planningAdapter,
-      tabSession,
+      tabSession: sessionProxy,
       chatFactory: () => chat,
       buildConfig: (ctx, tools) =>
         buildChatConfig(ctx, tools as unknown as CleanTool[], planManager.planModeEnabled, mentionContexts),

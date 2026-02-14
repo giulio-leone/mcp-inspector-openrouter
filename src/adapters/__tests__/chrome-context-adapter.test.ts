@@ -165,6 +165,25 @@ describe('ChromeContextAdapter', () => {
       });
       expect(result).toEqual(ctx);
     });
+
+    it('succeeds on second attempt after first failure', async () => {
+      const ctx = makePageContext({ title: 'Retry Success' });
+
+      // Attempt 1: ensureContentScript PING fails → injects script → GET_PAGE_CONTEXT also fails
+      // Attempt 2: ensureContentScript PING succeeds → GET_PAGE_CONTEXT succeeds
+      mockSendMessage
+        .mockRejectedValueOnce(new Error('ping fail'))       // PING attempt 1
+        .mockRejectedValueOnce(new Error('ctx fail'))        // GET_PAGE_CONTEXT attempt 1
+        .mockResolvedValueOnce('pong')                       // PING attempt 2
+        .mockResolvedValueOnce(ctx);                         // GET_PAGE_CONTEXT attempt 2
+      mockExecuteScript.mockResolvedValueOnce(undefined);    // injection on attempt 1
+
+      const promise = adapter.getPageContext(1);
+      await vi.advanceTimersByTimeAsync(1000); // delay after attempt 1 (500 * (0+1))
+      const result = await promise;
+
+      expect(result).toEqual(ctx);
+    });
   });
 
   // ── getLiveState ──
@@ -180,6 +199,14 @@ describe('ChromeContextAdapter', () => {
     });
 
     it('returns null when no page context cached', () => {
+      expect(adapter.getLiveState()).toBeNull();
+    });
+
+    it('returns null when lastPageContext exists but has no liveState', async () => {
+      const ctx = makePageContext(); // no liveState field
+      mockSendMessage.mockResolvedValueOnce('pong').mockResolvedValueOnce(ctx);
+      await adapter.getPageContext(1);
+
       expect(adapter.getLiveState()).toBeNull();
     });
   });
@@ -271,6 +298,51 @@ describe('ChromeContextAdapter', () => {
       expect(result.originalCount).toBe(0);
       expect(result.compressedCount).toBe(0);
       expect(result.summary).toBe('');
+    });
+
+    it('keeps zero messages when budget is zero', async () => {
+      const msgs = [makeMessage('abcd'), makeMessage('efgh')];
+      const result = await adapter.summarizeIfNeeded(msgs, 0);
+
+      expect(result.compressedCount).toBe(0);
+      expect(result.originalCount).toBe(2);
+      expect(result.summary).toContain('2 earlier messages');
+    });
+
+    it('drops all messages when single message exceeds budget', async () => {
+      // "abcdefgh" = 8 chars = 2 tokens, budget = 1
+      const msgs = [makeMessage('abcdefgh')];
+      const result = await adapter.summarizeIfNeeded(msgs, 1);
+
+      expect(result.compressedCount).toBe(0);
+      expect(result.originalCount).toBe(1);
+      expect(result.summary).toBe(
+        '[1 earlier message summarized to fit context window]',
+      );
+    });
+
+    it('estimates tokens correctly (~4 chars per token)', async () => {
+      // 12 chars = ceil(12/4) = 3 tokens per message; budget = 5
+      // Most recent fits (3 tokens), second-to-last would need 3 more (total 6 > 5)
+      const msgs = [makeMessage('aaaaaaaaaaaa'), makeMessage('bbbbbbbbbbbb')];
+      const result = await adapter.summarizeIfNeeded(msgs, 5);
+
+      expect(result.compressedCount).toBe(1);
+      expect(result.originalCount).toBe(2);
+    });
+
+    it('handles messages with varying lengths', async () => {
+      // msg1: 20 chars = 5 tokens, msg2: 4 chars = 1 token, msg3: 8 chars = 2 tokens
+      // budget = 3: keeps msg3 (2 tokens) + msg2 (1 token) = 3
+      const msgs = [
+        makeMessage('a'.repeat(20)),
+        makeMessage('abcd'),
+        makeMessage('abcdefgh'),
+      ];
+      const result = await adapter.summarizeIfNeeded(msgs, 3);
+
+      expect(result.compressedCount).toBe(2);
+      expect(result.originalCount).toBe(3);
     });
   });
 });
