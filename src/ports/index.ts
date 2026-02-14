@@ -19,6 +19,12 @@ export type {
   EnqueueOptions,
 } from './background-task.port';
 export type {
+  ICronSchedulerPort,
+  CronSchedule,
+  CronEventMap,
+  ScheduleOptions,
+} from './cron-scheduler.port';
+export type {
   INavigationPlanPort,
   NavigationStepType,
   StepErrorStrategy,

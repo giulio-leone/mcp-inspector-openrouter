@@ -17,3 +17,4 @@ export type { ApprovalCallback, TierResolver } from './approval-gate-adapter';
 export { TabSessionAdapter } from './tab-session-adapter';
 export { NavigationPlanAdapter, resolveTemplate } from './navigation-plan-adapter';
 export { BackgroundTaskAdapter } from './background-task-adapter';
+export { CronSchedulerAdapter } from './cron-scheduler-adapter';
