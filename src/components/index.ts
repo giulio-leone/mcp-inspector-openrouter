@@ -6,3 +6,4 @@ export { ChatHeader } from './chat-header';
 export { ChatInput } from './chat-input';
 export { ReasoningAccordion } from './reasoning-accordion';
 export { ToolTable } from './tool-table';
+export { PlanViewer } from './plan-viewer';

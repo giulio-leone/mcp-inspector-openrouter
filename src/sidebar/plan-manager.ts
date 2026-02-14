@@ -3,12 +3,13 @@
  */
 
 import type { Plan, PlanStep, ToolResponse } from '../types';
-import { renderPlan, updatePlanStep } from './plan-renderer';
+import type { PlanViewer } from '../components/plan-viewer';
+import '../components/plan-viewer';
 
 
 export interface ActivePlan {
   plan: Plan;
-  element: HTMLElement;
+  element: PlanViewer;
   currentStepIdx: number;
 }
 
@@ -53,17 +54,16 @@ export class PlanManager {
     for (const step of ap.plan.steps) {
       if (step.status === 'pending' || step.status === 'in_progress') {
         step.status = 'done';
-        updatePlanStep(ap.element, step.id, 'done');
       }
       if (step.children) {
         for (const child of step.children) {
           if (child.status === 'pending' || child.status === 'in_progress') {
             child.status = 'done';
-            updatePlanStep(ap.element, child.id, 'done');
           }
         }
       }
     }
+    ap.element.plan = { ...ap.plan };
   }
 
   // ── Plan tool handling ──
@@ -97,11 +97,10 @@ export class PlanManager {
     if (this.activePlan && name === 'update_plan') {
       this.activePlan.plan = plan;
       this.activePlan.currentStepIdx = 0;
-      const newPlanEl = renderPlan(plan);
-      this.activePlan.element.replaceWith(newPlanEl);
-      this.activePlan.element = newPlanEl;
+      this.activePlan.element.plan = plan;
     } else {
-      const planEl = renderPlan(plan);
+      const planEl = document.createElement('plan-viewer') as PlanViewer;
+      planEl.plan = plan;
       this.activePlan = { plan, element: planEl, currentStepIdx: 0 };
       console.debug('[Sidebar] chatContainer exists:', !!this.chatContainer);
       if (this.chatContainer) {
@@ -129,7 +128,7 @@ export class PlanManager {
     const step = this.getCurrentPlanStep();
     if (step) {
       step.status = 'in_progress';
-      updatePlanStep(this.activePlan.element, step.id, 'in_progress');
+      this.activePlan.element.updateStep(step.id, 'in_progress');
     }
   }
 
@@ -139,7 +138,7 @@ export class PlanManager {
     const step = this.getCurrentPlanStep();
     if (step) {
       step.status = 'done';
-      updatePlanStep(this.activePlan.element, step.id, 'done', detail);
+      this.activePlan.element.updateStep(step.id, 'done', detail);
     }
   }
 
@@ -149,7 +148,7 @@ export class PlanManager {
     const step = this.getCurrentPlanStep();
     if (step) {
       step.status = 'failed';
-      updatePlanStep(this.activePlan.element, step.id, 'failed', detail);
+      this.activePlan.element.updateStep(step.id, 'failed', detail);
     }
   }
 }
