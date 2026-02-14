@@ -12,6 +12,13 @@ export type { IContextManagerPort } from './context-manager.port';
 export type { IApprovalGatePort, ApprovalDecision, ApprovalRequest } from './approval-gate.port';
 export type { ITabSessionPort, TabContext } from './tab-session.port';
 export type {
+  IBackgroundTaskPort,
+  BackgroundTask,
+  BackgroundTaskStatus,
+  BackgroundTaskEventMap,
+  EnqueueOptions,
+} from './background-task.port';
+export type {
   INavigationPlanPort,
   NavigationStepType,
   StepErrorStrategy,
