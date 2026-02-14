@@ -25,6 +25,7 @@ import { AgentOrchestrator } from '../adapters/agent-orchestrator';
 import { ChromeToolAdapter } from '../adapters/chrome-tool-adapter';
 import { ApprovalGateAdapter } from '../adapters/approval-gate-adapter';
 import { PlanningAdapter } from '../adapters/planning-adapter';
+import { TabSessionAdapter } from '../adapters/tab-session-adapter';
 import { getSecurityTier } from '../content/merge';
 import { showApprovalDialog, type SecurityDialogRefs } from './security-dialog';
 import type { ConversationController } from './conversation-controller';
@@ -345,6 +346,8 @@ export class AIChatController {
   ): Promise<void> {
     const chromeToolPort = new ChromeToolAdapter();
     const planningAdapter = new PlanningAdapter(planManager);
+    const tabSession = new TabSessionAdapter();
+    tabSession.startSession();
 
     // Build tool name → security tier lookup from current tools
     const toolMap = new Map(allTools.map((t) => [t.name, t]));
@@ -370,6 +373,7 @@ export class AIChatController {
       toolPort: approvalGate,
       contextPort: {} as any, // Not used during run() — context is passed inline
       planningPort: planningAdapter,
+      tabSession,
       chatFactory: () => chat,
       buildConfig: (ctx, tools) =>
         buildChatConfig(ctx, tools as CleanTool[], planManager.planModeEnabled, mentionContexts),

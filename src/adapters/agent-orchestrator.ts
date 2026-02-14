@@ -14,6 +14,7 @@ import type { IToolExecutionPort } from '../ports/tool-execution.port';
 import type { IPlanningPort } from '../ports/planning.port';
 import type { IContextPort } from '../ports/context.port';
 import type { IContextManagerPort } from '../ports/context-manager.port';
+import type { ITabSessionPort } from '../ports/tab-session.port';
 import type {
   AgentContext,
   AgentResult,
@@ -38,6 +39,7 @@ export interface OrchestratorDeps {
   readonly contextPort: IContextPort;
   readonly planningPort: IPlanningPort;
   readonly contextManager?: IContextManagerPort;
+  readonly tabSession?: ITabSessionPort;
   readonly chatFactory: () => OpenRouterChat;
   readonly buildConfig: (ctx: PageContext | null, tools: readonly CleanTool[]) => ChatConfig;
 }
@@ -84,7 +86,19 @@ export class AgentOrchestrator implements IAgentPort {
   }
 
   async run(prompt: string | ContentPart[], context: AgentContext): Promise<AgentResult> {
-    const { toolPort, contextPort, planningPort, buildConfig, chatFactory } = this.deps;
+    const { toolPort, contextPort, planningPort, buildConfig, chatFactory, tabSession } = this.deps;
+
+    /** Wraps buildConfig to inject multi-tab session context into the system prompt. */
+    const enrichedBuildConfig = (ctx: PageContext | null, t: readonly CleanTool[]): ChatConfig => {
+      const config = buildConfig(ctx, t);
+      if (tabSession) {
+        const summary = tabSession.buildContextSummary();
+        if (summary && config.systemInstruction) {
+          return { ...config, systemInstruction: [...config.systemInstruction, '', '**MULTI-TAB SESSION CONTEXT:**', summary] };
+        }
+      }
+      return config;
+    };
     const { tabId, mentionContexts } = context;
 
     // Clear offloaded content from prior run to prevent unbounded growth
@@ -101,7 +115,16 @@ export class AgentOrchestrator implements IAgentPort {
     let tools = [...context.tools] as CleanTool[];
     const toolCallRecords: ToolCallRecord[] = [];
 
-    const config = buildConfig(pageContext, tools);
+    // Seed initial tab context so storeData() works from the first tool call
+    if (tabSession && pageContext) {
+      tabSession.setTabContext(target.tabId, {
+        url: pageContext.url ?? '',
+        title: pageContext.title ?? '',
+        extractedData: {},
+      });
+    }
+
+    const config = enrichedBuildConfig(pageContext, tools);
     let currentResult = await chat.sendMessage({ message: prompt, config });
 
     const loopStart = performance.now();
@@ -184,6 +207,11 @@ export class AgentOrchestrator implements IAgentPort {
 
           toolResponses.push(this.toToolResponse(fc, responseData));
 
+          // Store successful tool result data in tab session
+          if (result.success && tabSession && result.data != null) {
+            tabSession.storeData(target.tabId, fc.name, result.data);
+          }
+
           // Navigation triggers rescan — skip remaining calls
           if (result.success && isNavigationTool(fc.name)) {
             this.eventBus.emit('navigation', { toolName: fc.name });
@@ -192,6 +220,15 @@ export class AgentOrchestrator implements IAgentPort {
             pageContext = rescan.pageContext;
             tools = rescan.tools;
             navigatedAtIndex = i;
+
+            // Update tab session with new page context after navigation
+            if (tabSession && pageContext) {
+              tabSession.setTabContext(target.tabId, {
+                url: pageContext.url ?? '',
+                title: pageContext.title ?? '',
+                extractedData: {},
+              });
+            }
             break;
           }
         } catch (e) {
@@ -222,7 +259,7 @@ export class AgentOrchestrator implements IAgentPort {
 
       planningPort.advanceStep();
 
-      const updatedConfig = buildConfig(pageContext, tools);
+      const updatedConfig = enrichedBuildConfig(pageContext, tools);
       chat.trimHistory();
       currentResult = await chat.sendMessage({
         message: toolResponses,
@@ -244,6 +281,7 @@ export class AgentOrchestrator implements IAgentPort {
 
   async dispose(): Promise<void> {
     this.chat = null;
+    this.deps.tabSession?.endSession();
     this.eventBus.dispose();
   }
 
