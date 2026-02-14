@@ -73,17 +73,7 @@
     <!-- Chat bubbles -->
     <chat-container id="chatContainer"></chat-container>
 
-    <!-- Sticky input area -->
-    <div class="chat-input-area">
-      <div class="chat-input-row">
-        <textarea id="userPromptText" placeholder="Send a message..." rows="2"></textarea>
-        <button id="promptBtn" disabled title="Send">▶</button>
-      </div>
-      <div class="chat-input-actions">
-        <button id="traceBtn" class="secondary small">Copy trace</button>
-        <button id="debugLogBtn" class="secondary small" title="Download debug log">🐛 Debug log</button>
-      </div>
-    </div>
+    <chat-input id="chatInput"></chat-input>
   </div>
 
   <!-- Security confirmation dialog for mutation-tier inferred tools -->

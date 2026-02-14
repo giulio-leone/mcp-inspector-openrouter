@@ -3,7 +3,9 @@
 import '../components/theme-provider';
 import '../components/chat-container';
 import '../components/chat-header';
+import '../components/chat-input';
 import type { ChatHeader } from '../components/chat-header';
+import type { ChatInput } from '../components/chat-input';
 import type { CleanTool } from '../types';
 import { STORAGE_KEY_LOCK_MODE, STORAGE_KEY_PLAN_MODE } from '../utils/constants';
 import { ICONS } from './icons';
@@ -28,6 +30,7 @@ const lockToggle = $<HTMLInputElement>('lockToggle');
 const lockLabel = $<HTMLSpanElement>('lockLabel');
 const chatContainer = $<HTMLElement>('chatContainer');
 const chatHeader = $<ChatHeader>('chatHeader');
+const chatInput = $<ChatInput>('chatInput');
 
 // Tab switching
 const tabBtns = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
@@ -120,8 +123,7 @@ const securityDialogRefs: SecurityDialogRefs = {
 initSecurityDialog(securityDialogRefs);
 
 const aiChat = new AIChatController({
-  userPromptText: $<HTMLTextAreaElement>('userPromptText'),
-  promptBtn: $<HTMLButtonElement>('promptBtn'),
+  chatInput,
   chatHeader,
   getCurrentTab,
   getCurrentTools: (): CleanTool[] => currentTools,
@@ -130,16 +132,18 @@ const aiChat = new AIChatController({
   securityDialogRefs,
 });
 void aiChat.init();
-aiChat.setupListeners();
-$<HTMLButtonElement>('traceBtn').onclick = async (): Promise<void> => {
+void chatInput.updateComplete.then(() => {
+  aiChat.setupListeners();
+});
+chatInput.addEventListener('copy-trace', async (): Promise<void> => {
   await navigator.clipboard.writeText(JSON.stringify(convCtrl.state.trace, null, ' '));
-};
+});
 
 // Debug log download
 import { logger } from './debug-logger';
-$<HTMLButtonElement>('debugLogBtn').onclick = (): void => {
+chatInput.addEventListener('download-debug-log', (): void => {
   logger.download();
-};
+});
 
 // Module DOM refs
 const toolListRefs: ToolListDomRefs = { statusDiv, tbody, thead, toolNames, inputArgsText, executeBtn, copyToClipboard };

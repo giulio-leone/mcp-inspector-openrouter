@@ -30,19 +30,19 @@ import { getSecurityTier } from '../content/merge';
 import { showApprovalDialog, type SecurityDialogRefs } from './security-dialog';
 import type { ConversationController } from './conversation-controller';
 import type { ChatHeader } from '../components/chat-header';
+import type { ChatInput } from '../components/chat-input';
 import { createMentionAutocomplete, type MentionAutocomplete, type TabMention } from './tab-mention';
 import { logger } from './debug-logger';
 
 export interface AIChatDeps {
-  userPromptText: HTMLTextAreaElement;
-  promptBtn: HTMLButtonElement;
-  chatHeader: ChatHeader;
-  getCurrentTab: () => Promise<chrome.tabs.Tab | undefined>;
-  getCurrentTools: () => CleanTool[];
-  setCurrentTools: (tools: CleanTool[]) => void;
-  convCtrl: ConversationController;
-  planManager: PlanManager;
-  securityDialogRefs: SecurityDialogRefs;
+  readonly chatInput: ChatInput;
+  readonly chatHeader: ChatHeader;
+  readonly getCurrentTab: () => Promise<chrome.tabs.Tab | undefined>;
+  readonly getCurrentTools: () => CleanTool[];
+  readonly setCurrentTools: (tools: CleanTool[]) => void;
+  readonly convCtrl: ConversationController;
+  readonly planManager: PlanManager;
+  readonly securityDialogRefs: SecurityDialogRefs;
 }
 
 export class AIChatController {
@@ -82,38 +82,33 @@ export class AIChatController {
 
     if (savedApiKey) {
       this.genAI = new OpenRouterAdapter({ apiKey: savedApiKey, model: savedModel });
-      this.deps.promptBtn.disabled = false;
+      this.deps.chatInput.disabled = false;
       this.deps.chatHeader.setApiKeyHint(false);
     } else {
       this.genAI = undefined;
-      this.deps.promptBtn.disabled = true;
+      this.deps.chatInput.disabled = true;
       this.deps.chatHeader.setApiKeyHint(true);
     }
   }
 
   setupListeners(): void {
-    const { userPromptText, promptBtn, convCtrl } = this.deps;
+    const { chatInput, convCtrl } = this.deps;
 
-    userPromptText.onkeydown = (event: KeyboardEvent): void => {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        promptBtn.click();
-      }
-    };
-
-    promptBtn.onclick = async (): Promise<void> => {
+    chatInput.addEventListener('send-message', async (e: Event): Promise<void> => {
+      const message = (e as CustomEvent<{ message: string }>).detail.message;
       try {
-        await this.promptAI();
+        await this.promptAI(message);
       } catch (error) {
         convCtrl.state.trace.push({ error });
         convCtrl.addAndRender('error', `⚠️ Error: "${error}"`, {}, this.pinnedConv ?? undefined);
       }
-    };
+    });
 
-    // @mention autocomplete
+    // @mention autocomplete — clean up previous instance
+    this.mentionAC?.destroy();
     this.mentionAC = createMentionAutocomplete(
-      userPromptText,
-      userPromptText.parentElement!,
+      chatInput.querySelector('textarea')!,
+      chatInput,
     );
 
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -125,13 +120,13 @@ export class AIChatController {
   }
 
   async suggestUserPrompt(): Promise<void> {
-    const { userPromptText } = this.deps;
+    const { chatInput } = this.deps;
     const currentTools = this.deps.getCurrentTools();
 
     if (
       currentTools.length === 0 ||
       !this.genAI ||
-      userPromptText.value !== this.lastSuggestedUserPrompt
+      chatInput.value !== this.lastSuggestedUserPrompt
     )
       return;
 
@@ -151,22 +146,23 @@ export class AIChatController {
 
     if (
       userPromptId !== this.userPromptPendingId ||
-      userPromptText.value !== this.lastSuggestedUserPrompt
+      chatInput.value !== this.lastSuggestedUserPrompt
     )
       return;
 
     const rawContent = response.choices?.[0]?.message?.content;
     const text = typeof rawContent === 'string' ? rawContent : (rawContent ?? '').toString();
     this.lastSuggestedUserPrompt = text;
-    userPromptText.value = '';
+    chatInput.value = '';
     for (const chunk of text) {
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      userPromptText.value += chunk;
+      chatInput.value += chunk;
     }
+    chatInput.syncState();
   }
 
-  async promptAI(): Promise<void> {
-    const { getCurrentTab, convCtrl, planManager, getCurrentTools, setCurrentTools, userPromptText } =
+  async promptAI(providedMessage?: string): Promise<void> {
+    const { getCurrentTab, convCtrl, planManager, getCurrentTools, setCurrentTools, chatInput } =
       this.deps;
 
     const tab = await getCurrentTab();
@@ -200,8 +196,9 @@ export class AIChatController {
       }
     }
 
-    // Parse @mentions
-    let message = userPromptText.value;
+    // Parse @mentions — use provided message or read from input
+    let message = providedMessage ?? chatInput.value;
+    if (!message) return;
     if (this.mentionAC) {
       const parsed = this.mentionAC.parseMentions(message);
       message = parsed.cleanText;
@@ -210,7 +207,7 @@ export class AIChatController {
     } else {
       this.activeMentions = [];
     }
-    userPromptText.value = '';
+    if (!providedMessage) chatInput.clear();
     this.lastSuggestedUserPrompt = '';
 
     convCtrl.addAndRender('user', message, {}, pinnedConv);
