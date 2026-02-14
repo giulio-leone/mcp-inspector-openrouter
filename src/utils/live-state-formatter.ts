@@ -34,14 +34,29 @@ function formatMedia(media: readonly MediaLiveState[]): string | null {
   return `🎬 Media Players:\n${lines.join('\n')}`;
 }
 
+/** Truncate a value string for display */
+function truncateValue(v: string, max = 50): string {
+  return v.length > max ? v.slice(0, max) + '…' : v;
+}
+
 function formatForms(forms: readonly FormLiveState[]): string | null {
   if (!forms.length) return null;
-  const lines = forms.map((f) => {
+  const lines: string[] = [];
+  for (const f of forms) {
     const pct = `${f.filledFields}/${f.totalFields} filled (${f.completionPercent}%)`;
     const dirty = f.dirtyFields.length ? `, dirty: [${f.dirtyFields.join(', ')}]` : '';
-    const errors = f.hasValidationErrors ? ', has validation errors' : '';
-    return `  - "${f.toolName}" (${f.formId}): ${pct}${dirty}${errors}`;
-  });
+    const errors = f.hasValidationErrors ? ', ⚠️ has validation errors' : '';
+    lines.push(`  - "${f.toolName || f.formId}": ${pct}${dirty}${errors}`);
+
+    if (f.fields?.length) {
+      for (const field of f.fields.slice(0, 15)) {
+        const status = field.filled ? '✅' : (field.required ? '❌ REQUIRED' : '⬜');
+        const val = field.filled ? ` = "${truncateValue(field.value)}"` : '';
+        const opts = field.options?.length ? ` [options: ${field.options.slice(0, 5).join(', ')}]` : '';
+        lines.push(`    • ${field.label || field.name} (${field.type}): ${status}${val}${opts}`);
+      }
+    }
+  }
   return `📝 Forms:\n${lines.join('\n')}`;
 }
 

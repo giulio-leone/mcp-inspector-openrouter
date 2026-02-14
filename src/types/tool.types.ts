@@ -152,6 +152,7 @@ export interface PageContext {
   readonly products?: readonly ProductInfo[];
   readonly cartCount?: number;
   readonly formDefaults?: Readonly<Record<string, Record<string, string>>>;
+  readonly formFields?: Readonly<Record<string, Record<string, string>>>;
   readonly mainHeading?: string;
   readonly pageText?: string;
   readonly headings?: readonly string[];

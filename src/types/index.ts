@@ -82,6 +82,7 @@ export type {
 export type { PlanStep, PlanStepStatus, Plan, AIPlanResponse } from './plan.types';
 
 export type {
+  FormFieldDetail,
   MediaLiveState,
   FormLiveState,
   NavigationLiveState,

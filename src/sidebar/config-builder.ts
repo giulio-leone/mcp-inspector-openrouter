@@ -384,6 +384,18 @@ export function buildChatConfig(
           JSON.stringify(pageContext.formDefaults),
       );
     }
+    if (
+      pageContext.formFields &&
+      Object.keys(pageContext.formFields).length
+    ) {
+      systemInstruction.push('', 'Current form field values:');
+      for (const [formId, fields] of Object.entries(pageContext.formFields)) {
+        const fieldEntries = Object.entries(fields)
+          .map(([name, val]) => `${name}=${val ? `"${val}"` : '(empty)'}`)
+          .join(', ');
+        systemInstruction.push(`  Form "${formId}": ${fieldEntries}`);
+      }
+    }
     if (pageContext.metaDescription)
       systemInstruction.push(`Meta description: ${pageContext.metaDescription}`);
     if (pageContext.headings?.length) {

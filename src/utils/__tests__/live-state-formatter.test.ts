@@ -137,6 +137,7 @@ describe('formatLiveStateForPrompt', () => {
         dirtyFields: ['query'],
         hasValidationErrors: false,
         completionPercent: 33,
+        fields: [],
       };
       const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
       expect(result).toContain('📝 Forms');
@@ -153,9 +154,117 @@ describe('formatLiveStateForPrompt', () => {
         dirtyFields: [],
         hasValidationErrors: true,
         completionPercent: 0,
+        fields: [],
       };
       const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
       expect(result).toContain('has validation errors');
+    });
+
+    it('formats per-field details', () => {
+      const form: FormLiveState = {
+        formId: 'login',
+        toolName: 'auth-login',
+        totalFields: 2,
+        filledFields: 1,
+        dirtyFields: [],
+        hasValidationErrors: false,
+        completionPercent: 50,
+        fields: [
+          { name: 'email', label: 'Email', type: 'email', value: 'user@test.com', filled: true, required: true, valid: true },
+          { name: 'password', label: 'Password', type: 'password', value: '', filled: false, required: true, valid: true },
+        ],
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
+      expect(result).toContain('• Email (email): ✅ = "user@test.com"');
+      expect(result).toContain('• Password (password): ❌ REQUIRED');
+    });
+
+    it('truncates long values', () => {
+      const longValue = 'a'.repeat(80);
+      const form: FormLiveState = {
+        formId: 'f',
+        toolName: '',
+        totalFields: 1,
+        filledFields: 1,
+        dirtyFields: [],
+        hasValidationErrors: false,
+        completionPercent: 100,
+        fields: [
+          { name: 'bio', label: 'Bio', type: 'textarea', value: longValue, filled: true, required: false, valid: true },
+        ],
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
+      expect(result).toContain('…');
+      expect(result).not.toContain(longValue);
+    });
+
+    it('shows options for select fields', () => {
+      const form: FormLiveState = {
+        formId: 'settings',
+        toolName: '',
+        totalFields: 1,
+        filledFields: 0,
+        dirtyFields: [],
+        hasValidationErrors: false,
+        completionPercent: 0,
+        fields: [
+          { name: 'country', label: 'Country', type: 'select', value: '', filled: false, required: true, valid: true, options: ['US', 'UK', 'DE'] },
+        ],
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
+      expect(result).toContain('[options: US, UK, DE]');
+    });
+
+    it('caps field display at 15', () => {
+      const fields = Array.from({ length: 20 }, (_, i) => ({
+        name: `field-${i}`, label: `Field ${i}`, type: 'text',
+        value: 'v', filled: true, required: false, valid: true,
+      }));
+      const form: FormLiveState = {
+        formId: 'big',
+        toolName: '',
+        totalFields: 20,
+        filledFields: 20,
+        dirtyFields: [],
+        hasValidationErrors: false,
+        completionPercent: 100,
+        fields,
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
+      expect(result).toContain('Field 14');
+      expect(result).not.toContain('Field 15');
+    });
+
+    it('shows unfilled optional fields as empty square', () => {
+      const form: FormLiveState = {
+        formId: 'f',
+        toolName: '',
+        totalFields: 1,
+        filledFields: 0,
+        dirtyFields: [],
+        hasValidationErrors: false,
+        completionPercent: 0,
+        fields: [
+          { name: 'notes', label: 'Notes', type: 'textarea', value: '', filled: false, required: false, valid: true },
+        ],
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
+      expect(result).toContain('• Notes (textarea): ⬜');
+    });
+
+    it('uses formId when toolName is empty', () => {
+      const form: FormLiveState = {
+        formId: 'my-form',
+        toolName: '',
+        totalFields: 1,
+        filledFields: 0,
+        dirtyFields: [],
+        hasValidationErrors: false,
+        completionPercent: 0,
+        fields: [],
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ forms: [form] }));
+      expect(result).toContain('"my-form"');
     });
   });
 
@@ -246,7 +355,7 @@ describe('formatLiveStateForPrompt', () => {
       forms: [{
         formId: 'search', toolName: 'search', totalFields: 2,
         filledFields: 1, dirtyFields: ['q'], hasValidationErrors: false,
-        completionPercent: 50,
+        completionPercent: 50, fields: [],
       }],
       navigation: {
         currentUrl: 'https://example.com', scrollPercent: 10,

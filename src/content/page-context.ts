@@ -12,6 +12,7 @@ export function extractPageContext(): PageContext {
   let products: ProductInfo[] | undefined;
   let cartCount: number | undefined;
   let formDefaults: Record<string, Record<string, string>> | undefined;
+  let formFields: Record<string, Record<string, string>> | undefined;
   let mainHeading: string | undefined;
   let pageText: string | undefined;
   let headings: string[] | undefined;
@@ -56,6 +57,38 @@ export function extractPageContext(): PageContext {
       const toolName = f.getAttribute('toolname');
       if (toolName) {
         formDefaults![toolName] = getFormValues(f as HTMLFormElement);
+      }
+    });
+  }
+
+  // All visible forms with their fields (capped for token budget)
+  const MAX_FORMS = 10;
+  const MAX_FIELDS_PER_FORM = 30;
+  const MAX_VALUE_LEN = 200;
+  const formElements = document.querySelectorAll('form');
+  if (formElements.length) {
+    formFields = {};
+    let formCount = 0;
+    formElements.forEach((f, i) => {
+      if (formCount >= MAX_FORMS) return;
+      const htmlForm = f as HTMLFormElement;
+      const formId = htmlForm.id || htmlForm.getAttribute('toolname') || `form-${i}`;
+      const inputs = htmlForm.querySelectorAll('input, select, textarea');
+      const fields: Record<string, string> = {};
+      let fieldCount = 0;
+      inputs.forEach(inp => {
+        if (fieldCount >= MAX_FIELDS_PER_FORM) return;
+        const el = inp as HTMLInputElement;
+        if (el.type === 'hidden') return;
+        const name = el.name || el.id || '';
+        if (!name) return;
+        const raw = el.type === 'password' ? (el.value ? '••••' : '') : el.value;
+        fields[name] = raw.length > MAX_VALUE_LEN ? raw.slice(0, MAX_VALUE_LEN) + '…' : raw;
+        fieldCount++;
+      });
+      if (Object.keys(fields).length > 0) {
+        formFields![formId] = fields;
+        formCount++;
       }
     });
   }
@@ -148,6 +181,7 @@ export function extractPageContext(): PageContext {
     ...(products ? { products } : {}),
     ...(cartCount !== undefined ? { cartCount } : {}),
     ...(formDefaults ? { formDefaults } : {}),
+    ...(formFields && Object.keys(formFields).length ? { formFields } : {}),
     ...(mainHeading ? { mainHeading } : {}),
     ...(pageText ? { pageText } : {}),
     ...(headings?.length ? { headings } : {}),
