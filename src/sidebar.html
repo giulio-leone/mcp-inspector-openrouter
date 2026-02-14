@@ -16,10 +16,7 @@
 <body>
 <theme-provider>
   <!-- Tab bar -->
-  <nav class="tab-bar">
-    <button class="tab-btn active" data-tab="tools"><span class="tab-icon" id="icon-tools"></span> Tools</button>
-    <button class="tab-btn" data-tab="chat"><span class="tab-icon" id="icon-chat"></span> Chat</button>
-  </nav>
+  <tab-navigator id="tabNavigator" activeTab="tools"></tab-navigator>
 
   <!-- ═══ Tools tab ═══ -->
   <div class="tab-panel active" id="tab-tools">
@@ -33,6 +30,7 @@
       </div>
     </div>
 
+    <status-bar id="statusBar"></status-bar>
     <tool-table id="toolTable"></tool-table>
   </div>
 
@@ -47,16 +45,7 @@
   </div>
 
   <!-- Security confirmation dialog for mutation-tier inferred tools -->
-  <dialog id="securityDialog" class="security-dialog">
-    <div class="dialog-body">
-      <p class="dialog-title">⚠️ <span id="dialogToolName"></span></p>
-      <p class="dialog-desc" id="dialogDesc"></p>
-      <div class="dialog-actions">
-        <button id="dialogCancel" class="btn-cancel">Cancel</button>
-        <button id="dialogConfirm" class="btn-danger">Execute</button>
-      </div>
-    </div>
-  </dialog>
+  <security-dialog id="securityDialog"></security-dialog>
 
   <script src="sidebar.js"></script>
 </theme-provider>

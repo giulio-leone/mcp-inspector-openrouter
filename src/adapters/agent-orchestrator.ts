@@ -20,6 +20,7 @@ import type {
   AgentResult,
   ToolCallRecord,
   ToolTarget,
+  ToolDefinition,
   OrchestratorEvent,
   OrchestratorEventListener,
   AgentEventMap,
@@ -41,7 +42,7 @@ export interface OrchestratorDeps {
   readonly contextManager?: IContextManagerPort;
   readonly tabSession?: ITabSessionPort;
   readonly chatFactory: () => OpenRouterChat;
-  readonly buildConfig: (ctx: PageContext | null, tools: readonly CleanTool[]) => ChatConfig;
+  readonly buildConfig: (ctx: PageContext | null, tools: readonly ToolDefinition[]) => ChatConfig;
 }
 
 export class AgentOrchestrator implements IAgentPort {
@@ -89,7 +90,7 @@ export class AgentOrchestrator implements IAgentPort {
     const { toolPort, contextPort, planningPort, buildConfig, chatFactory, tabSession } = this.deps;
 
     /** Wraps buildConfig to inject multi-tab session context into the system prompt. */
-    const enrichedBuildConfig = (ctx: PageContext | null, t: readonly CleanTool[]): ChatConfig => {
+    const enrichedBuildConfig = (ctx: PageContext | null, t: readonly ToolDefinition[]): ChatConfig => {
       const config = buildConfig(ctx, t);
       if (tabSession) {
         const summary = tabSession.buildContextSummary();
@@ -112,7 +113,7 @@ export class AgentOrchestrator implements IAgentPort {
     };
 
     let pageContext = context.pageContext;
-    let tools = [...context.tools] as CleanTool[];
+    let tools = [...context.tools] as ToolDefinition[];
     const toolCallRecords: ToolCallRecord[] = [];
 
     // Seed initial tab context so storeData() works from the first tool call
@@ -216,9 +217,9 @@ export class AgentOrchestrator implements IAgentPort {
           if (result.success && isNavigationTool(fc.name)) {
             this.eventBus.emit('navigation', { toolName: fc.name });
             logger.info('Orchestrator', `Navigation detected (${fc.name}), rescanning`);
-            const rescan = await waitForPageAndRescan(target.tabId, tools);
+            const rescan = await waitForPageAndRescan(target.tabId, tools as unknown as CleanTool[]);
             pageContext = rescan.pageContext;
-            tools = rescan.tools;
+            tools = rescan.tools as unknown as ToolDefinition[];
             navigatedAtIndex = i;
 
             // Update tab session with new page context after navigation
@@ -291,7 +292,7 @@ export class AgentOrchestrator implements IAgentPort {
     text: string,
     reasoning: string | undefined,
     toolCalls: readonly ToolCallRecord[],
-    tools: readonly CleanTool[],
+    tools: readonly ToolDefinition[],
     pageContext: PageContext | null,
     stepsCompleted: number,
   ): AgentResult {

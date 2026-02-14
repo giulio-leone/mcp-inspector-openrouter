@@ -1,47 +1,52 @@
 /** Sidebar entry — thin controller wiring up all modules. */
 
 import '../components/theme-provider';
+import '../components/tab-navigator';
 import '../components/chat-container';
 import '../components/chat-header';
 import '../components/chat-input';
+import '../components/status-bar';
 import '../components/tool-table';
 import type { ChatHeader } from '../components/chat-header';
 import type { ChatInput } from '../components/chat-input';
+import type { StatusBar } from '../components/status-bar';
 import type { ToolTable } from '../components/tool-table';
+import type { TabNavigator } from '../components/tab-navigator';
 import type { CleanTool } from '../types';
 import { STORAGE_KEY_LOCK_MODE, STORAGE_KEY_PLAN_MODE } from '../utils/constants';
 import { ICONS } from './icons';
 import * as Store from './chat-store';
 import { PlanManager } from './plan-manager';
 import { ConversationController } from './conversation-controller';
-import { initSecurityDialog, handleConfirmExecution, type SecurityDialogRefs } from './security-dialog';
+import '../components/security-dialog';
+import type { SecurityDialog } from '../components/security-dialog';
+import { resetApprovalController } from './security-dialog';
 import { AIChatController } from './ai-chat-controller';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
 const toolTable = $<ToolTable>('toolTable');
+const statusBar = $<StatusBar>('statusBar');
 const lockToggle = $<HTMLInputElement>('lockToggle');
 const lockLabel = $<HTMLSpanElement>('lockLabel');
 const chatContainer = $<HTMLElement>('chatContainer');
 const chatHeader = $<ChatHeader>('chatHeader');
 const chatInput = $<ChatInput>('chatInput');
+const tabNavigator = $<TabNavigator>('tabNavigator');
 
-// Tab switching
-const tabBtns = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
+// Configure tab navigator with tab definitions
+tabNavigator.tabs = [
+  { id: 'tools', label: 'Tools', icon: ICONS.wrench },
+  { id: 'chat', label: 'Chat', icon: ICONS.chat },
+];
+tabNavigator.activeTab = 'tools';
+
+// Tab switching via <tab-navigator> component
 const tabPanels = document.querySelectorAll<HTMLDivElement>('.tab-panel');
-tabBtns.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const target = btn.dataset.tab;
-    tabBtns.forEach((b) => b.classList.toggle('active', b === btn));
-    tabPanels.forEach((p) => p.classList.toggle('active', p.id === `tab-${target}`));
-  });
-});
-
-// Set SVG icons for tab buttons
-const iconTools = document.getElementById('icon-tools');
-const iconChat = document.getElementById('icon-chat');
-if (iconTools) iconTools.innerHTML = ICONS.wrench;
-if (iconChat) iconChat.innerHTML = ICONS.chat;
+tabNavigator.addEventListener('tab-change', ((e: CustomEvent) => {
+  const target = e.detail.tab;
+  tabPanels.forEach((p) => p.classList.toggle('active', p.id === `tab-${target}`));
+}) as EventListener);
 
 // State
 let currentTools: CleanTool[] = [];
@@ -107,14 +112,8 @@ chatHeader.addEventListener('toggle-plan', ((e: CustomEvent) => {
 chatHeader.addEventListener('open-options', () => chrome.runtime.openOptionsPage());
 
 // AI chat controller
-const securityDialogRefs: SecurityDialogRefs = {
-  dialog: $<HTMLDialogElement>('securityDialog'),
-  toolName: $<HTMLSpanElement>('dialogToolName'),
-  desc: $<HTMLParagraphElement>('dialogDesc'),
-  cancelBtn: $<HTMLButtonElement>('dialogCancel'),
-  confirmBtn: $<HTMLButtonElement>('dialogConfirm'),
-};
-initSecurityDialog(securityDialogRefs);
+// Security dialog component
+const securityDialogEl = $<SecurityDialog>('securityDialog');
 
 const aiChat = new AIChatController({
   chatInput,
@@ -123,7 +122,7 @@ const aiChat = new AIChatController({
   getCurrentTools: (): CleanTool[] => currentTools,
   setCurrentTools: (t): void => { currentTools = t; },
   convCtrl, planManager,
-  securityDialogRefs,
+  securityDialogEl,
 });
 void aiChat.init();
 void chatInput.updateComplete.then(() => {
@@ -150,7 +149,8 @@ chatInput.addEventListener('download-debug-log', (): void => {
     await chrome.tabs.sendMessage(tab.id, { action: 'SET_LOCK_MODE', inputArgs: { locked: lockToggle.checked } });
     convCtrl.loadConversations();
   } catch (error) {
-    toolTable.statusMessage = `Initialization error: ${(error as Error).message}`;
+    statusBar.message = `Initialization error: ${(error as Error).message}`;
+    statusBar.type = 'error';
   }
 })();
 
@@ -182,7 +182,24 @@ interface ToolBroadcast { message?: string; tools?: CleanTool[]; url?: string }
 chrome.runtime.onMessage.addListener(
   async (msg: ToolBroadcast & { action?: string }, sender): Promise<void> => {
     if (msg.action === 'CONFIRM_EXECUTION') {
-      handleConfirmExecution(securityDialogRefs, msg as unknown as { toolName: string; description: string; tier: number }, sender);
+      // Abort any pending approval flow (from either path) before adding new listeners
+      const ac = resetApprovalController();
+      const { signal } = ac;
+
+      const payload = msg as unknown as { toolName: string; description: string; tier: number };
+      securityDialogEl.show({
+        toolName: payload.toolName,
+        securityTier: payload.tier,
+        details: `This tool performs a ${payload.tier === 2 ? 'mutation' : 'navigation'} action: ${payload.description || payload.toolName}. Are you sure you want to execute it?`,
+      });
+      // Wire one-shot event listeners for legacy chrome.tabs messaging
+      const tabId = sender.tab?.id;
+      securityDialogEl.addEventListener('security-approve', () => {
+        if (tabId) chrome.tabs.sendMessage(tabId, { action: 'CONFIRM_EXECUTE', toolName: payload.toolName });
+      }, { once: true, signal });
+      securityDialogEl.addEventListener('security-deny', () => {
+        if (tabId) chrome.tabs.sendMessage(tabId, { action: 'CANCEL_EXECUTE', toolName: payload.toolName });
+      }, { once: true, signal });
       return;
     }
     const tab = await getCurrentTab();
@@ -191,6 +208,8 @@ chrome.runtime.onMessage.addListener(
     currentTools = msg.tools ?? [];
     toolTable.tools = currentTools;
     toolTable.statusMessage = msg.message ?? '';
+    statusBar.message = msg.message ?? '';
+    statusBar.type = 'info';
     toolTable.pageUrl = msg.url ?? tab?.url ?? '';
     toolTable.loading = false;
     if (haveNewTools) void aiChat.suggestUserPrompt();

@@ -1,88 +1,73 @@
 /**
  * Security dialog — handles user confirmation for tier 1/2 tool executions.
+ *
+ * Two mutually exclusive approval paths exist:
+ * - CONFIRM_EXECUTION: legacy content-script mode (handled in index.ts)
+ * - showApprovalDialog: orchestrator mode (this module)
+ *
+ * They share a single AbortController (_pendingApprovalAC) so that starting
+ * a new approval flow from either path cancels any pending one, preventing
+ * cross-fire between the two.
  */
 
 import type { ApprovalDecision } from '../ports/approval-gate.port';
 
-export interface SecurityDialogRefs {
-  dialog: HTMLDialogElement;
-  toolName: HTMLSpanElement;
-  desc: HTMLParagraphElement;
-  cancelBtn: HTMLButtonElement;
-  confirmBtn: HTMLButtonElement;
-}
+/** Shared controller — aborted whenever a new approval flow starts from either path. */
+let _pendingApprovalAC: AbortController | null = null;
 
-interface PendingConfirmation {
-  tabId: number | undefined;
-  toolName: string;
-}
-
-let _pendingConfirm: PendingConfirmation | null = null;
-
-export function initSecurityDialog(refs: SecurityDialogRefs): void {
-  refs.cancelBtn.onclick = (): void => {
-    refs.dialog.close();
-    if (_pendingConfirm?.tabId) {
-      chrome.tabs.sendMessage(_pendingConfirm.tabId, {
-        action: 'CANCEL_EXECUTE',
-        toolName: _pendingConfirm.toolName,
-      });
-    }
-    _pendingConfirm = null;
-  };
-
-  refs.confirmBtn.onclick = (): void => {
-    refs.dialog.close();
-    if (_pendingConfirm?.tabId) {
-      chrome.tabs.sendMessage(_pendingConfirm.tabId, {
-        action: 'CONFIRM_EXECUTE',
-        toolName: _pendingConfirm.toolName,
-      });
-    }
-    _pendingConfirm = null;
-  };
-}
-
-export function handleConfirmExecution(
-  refs: SecurityDialogRefs,
-  msg: { toolName: string; description: string; tier: number },
-  sender: chrome.runtime.MessageSender,
-): void {
-  refs.toolName.textContent = msg.toolName;
-  refs.desc.textContent = `This tool performs a ${msg.tier === 2 ? 'mutation' : 'navigation'} action: ${msg.description || msg.toolName}. Are you sure you want to execute it?`;
-  _pendingConfirm = { tabId: sender.tab?.id, toolName: msg.toolName };
-  refs.dialog.showModal();
+/**
+ * Abort any pending approval flow (from either CONFIRM_EXECUTION or
+ * showApprovalDialog) and return a fresh AbortController for the new flow.
+ * Exported so index.ts can call it from the CONFIRM_EXECUTION handler.
+ */
+export function resetApprovalController(): AbortController {
+  _pendingApprovalAC?.abort();
+  const ac = new AbortController();
+  _pendingApprovalAC = ac;
+  return ac;
 }
 
 /**
  * Promise-based approval dialog for the orchestrator flow.
- * Shows the security dialog and resolves when the user clicks confirm/cancel
- * or dismisses via Escape. Uses addEventListener with AbortController to avoid
- * overwriting legacy onclick handlers from initSecurityDialog.
+ * Uses the <security-dialog> component's show() method and one-time event
+ * listeners, avoiding direct DOM ref access that crashes when dialog is closed.
+ *
+ * If a previous dialog is still pending it is automatically superseded
+ * (resolved as denied) before the new one opens.
  */
 export function showApprovalDialog(
-  refs: SecurityDialogRefs,
+  dialogEl: import('../components/security-dialog').SecurityDialog,
   toolName: string,
   tier: number,
 ): Promise<ApprovalDecision> {
+  // Abort any previous pending dialog (from either path) so its promise settles.
+  const ac = resetApprovalController();
+
   return new Promise((resolve) => {
-    const ac = new AbortController();
     const { signal } = ac;
+    let settled = false;
 
     const done = (decision: ApprovalDecision): void => {
+      if (settled) return;
+      settled = true;
       ac.abort();
-      if (refs.dialog.open) refs.dialog.close();
       resolve(decision);
     };
 
-    refs.toolName.textContent = toolName;
-    refs.desc.textContent = `This tool performs a ${tier === 2 ? 'mutation' : 'navigation'} action: ${toolName}. Allow execution?`;
+    // If preempted before listeners fire, resolve immediately as denied.
+    signal.addEventListener('abort', () => done('denied'), { once: true });
+    if (signal.aborted) {
+      done('denied');
+      return;
+    }
 
-    refs.confirmBtn.addEventListener('click', () => done('approved'), { signal });
-    refs.cancelBtn.addEventListener('click', () => done('denied'), { signal });
-    refs.dialog.addEventListener('cancel', () => done('denied'), { signal });
+    dialogEl.addEventListener('security-approve', () => done('approved'), { signal });
+    dialogEl.addEventListener('security-deny', () => done('denied'), { signal });
 
-    if (refs.dialog.open) refs.dialog.close();
-    refs.dialog.showModal();
+    dialogEl.show({
+      toolName,
+      securityTier: tier,
+      details: `This tool performs a ${tier === 2 ? 'mutation' : 'navigation'} action: ${toolName}. Allow execution?`,
+    });
   });
 }

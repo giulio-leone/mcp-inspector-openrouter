@@ -8,6 +8,7 @@ import type {
   ScreenshotResponse,
   ContentPart,
 } from '../types';
+import type { ToolDefinition } from '../ports/types';
 import { OpenRouterAdapter, OpenRouterChat } from '../services/adapters';
 import {
   STORAGE_KEY_API_KEY,
@@ -27,7 +28,8 @@ import { ApprovalGateAdapter } from '../adapters/approval-gate-adapter';
 import { PlanningAdapter } from '../adapters/planning-adapter';
 import { TabSessionAdapter } from '../adapters/tab-session-adapter';
 import { getSecurityTier } from '../content/merge';
-import { showApprovalDialog, type SecurityDialogRefs } from './security-dialog';
+import { showApprovalDialog } from './security-dialog';
+import type { SecurityDialog } from '../components/security-dialog';
 import type { ConversationController } from './conversation-controller';
 import type { ChatHeader } from '../components/chat-header';
 import type { ChatInput } from '../components/chat-input';
@@ -42,7 +44,7 @@ export interface AIChatDeps {
   readonly setCurrentTools: (tools: CleanTool[]) => void;
   readonly convCtrl: ConversationController;
   readonly planManager: PlanManager;
-  readonly securityDialogRefs: SecurityDialogRefs;
+  readonly securityDialogEl: SecurityDialog;
 }
 
 export class AIChatController {
@@ -359,11 +361,11 @@ export class AIChatController {
     const yoloMode = !!yoloSettings[STORAGE_KEY_YOLO_MODE];
 
     // Wrap tool port with approval gate
-    const { securityDialogRefs } = this.deps;
+    const { securityDialogEl } = this.deps;
     const approvalGate = new ApprovalGateAdapter(
       chromeToolPort,
       resolveTier,
-      (req) => showApprovalDialog(securityDialogRefs, req.toolName, req.tier),
+      (req) => showApprovalDialog(securityDialogEl, req.toolName, req.tier),
     );
     if (yoloMode) approvalGate.setAutoApprove(true);
 
@@ -374,7 +376,7 @@ export class AIChatController {
       tabSession,
       chatFactory: () => chat,
       buildConfig: (ctx, tools) =>
-        buildChatConfig(ctx, tools as CleanTool[], planManager.planModeEnabled, mentionContexts),
+        buildChatConfig(ctx, tools as unknown as CleanTool[], planManager.planModeEnabled, mentionContexts),
     });
 
     // Subscribe to events for UI rendering
@@ -411,7 +413,7 @@ export class AIChatController {
 
     const result = await orchestrator.run(userMessage, {
       pageContext,
-      tools: allTools,
+      tools: allTools as unknown as ToolDefinition[],
       conversationHistory: [],
       liveState: null,
       tabId: originTabId,
@@ -420,7 +422,7 @@ export class AIChatController {
         : undefined,
     });
 
-    setCurrentTools(result.updatedTools as CleanTool[]);
+    setCurrentTools(result.updatedTools as unknown as CleanTool[]);
     planManager.markRemainingStepsDone();
 
     await orchestrator.dispose();

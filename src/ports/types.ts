@@ -20,7 +20,7 @@ import type { LiveStateSnapshot } from '../types/live-state.types';
 /** Context provided to the agent for a single run */
 export interface AgentContext {
   readonly pageContext: PageContext | null;
-  readonly tools: readonly CleanTool[];
+  readonly tools: readonly ToolDefinition[];
   readonly conversationHistory: readonly Message[];
   readonly liveState: LiveStateSnapshot | null;
   readonly tabId: number;
@@ -39,7 +39,7 @@ export interface AgentResult {
   readonly text: string;
   readonly reasoning?: string;
   readonly toolCalls: readonly ToolCallRecord[];
-  readonly updatedTools: readonly CleanTool[];
+  readonly updatedTools: readonly ToolDefinition[];
   readonly updatedPageContext: PageContext | null;
   readonly stepsCompleted: number;
 }
@@ -81,7 +81,7 @@ export interface ToolDefinition {
 export interface SubagentTask {
   readonly prompt: string;
   readonly instructions?: string;
-  readonly tools?: readonly CleanTool[];
+  readonly tools?: readonly ToolDefinition[];
   readonly context?: AgentContext;
   readonly maxSteps?: number;
   readonly timeoutMs?: number;
