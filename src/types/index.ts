@@ -88,6 +88,7 @@ export type {
   NavigationLiveState,
   AuthLiveState,
   InteractiveLiveState,
+  VisibilityLiveState,
   CategoryLiveState,
   LiveStateSnapshot,
   LiveStateCategory,

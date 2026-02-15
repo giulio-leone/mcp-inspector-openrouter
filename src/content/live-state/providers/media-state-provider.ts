@@ -13,6 +13,32 @@ function truncate(value: string, max = 100): string {
   return value.length > max ? value.slice(0, max) : value;
 }
 
+/** Detect if a video element is currently in fullscreen */
+function isFullscreen(el: Element | null): boolean {
+  if (!el) return false;
+  try {
+    const fsEl = el.ownerDocument?.fullscreenElement;
+    if (!fsEl) return false;
+    return fsEl === el || fsEl.contains(el) || el.contains(fsEl);
+  } catch {
+    return false;
+  }
+}
+
+/** Detect if captions/subtitles are active on a media element */
+function hasCaptionsActive(el: Element | null): boolean {
+  if (!el || !(el instanceof HTMLMediaElement)) return false;
+  try {
+    const tracks = el.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      if (tracks[i].mode === 'showing') return true;
+    }
+  } catch {
+    // Ignore cross-origin or unavailable textTracks
+  }
+  return false;
+}
+
 export class MediaStateProvider implements IStateProvider<MediaLiveState> {
   readonly category = 'media' as const;
 
@@ -54,6 +80,8 @@ export class MediaStateProvider implements IStateProvider<MediaLiveState> {
             duration: s.duration,
             volume: s.volume,
             muted: s.muted,
+            fullscreen: isFullscreen(player.anchorElement),
+            captions: hasCaptionsActive(player.anchorElement),
             playbackRate: s.playbackRate,
             hasPlaylist: s.hasPlaylist,
             ...(s.playlistIndex !== undefined && { playlistIndex: s.playlistIndex }),

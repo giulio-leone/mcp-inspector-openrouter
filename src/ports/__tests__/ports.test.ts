@@ -47,6 +47,7 @@ function makeLiveState(): LiveStateSnapshot {
       activeTooltips: [],
       visibleNotifications: [],
     },
+    visibility: { overlays: [], loadingIndicators: false },
   };
 }
 

@@ -10,4 +10,5 @@ export {
   NavigationStateProvider,
   AuthStateProvider,
   InteractiveStateProvider,
+  VisibilityStateProvider,
 } from './providers';

@@ -44,6 +44,8 @@ function makeLiveMediaState(overrides: Partial<MediaLiveState> = {}): MediaLiveS
     duration: 120,
     volume: 0.8,
     muted: false,
+    fullscreen: false,
+    captions: false,
     playbackRate: 1,
     hasPlaylist: false,
     ...overrides,
@@ -61,6 +63,7 @@ function makeSnapshot(media: MediaLiveState[]): LiveStateSnapshot {
       openModals: [], expandedAccordions: [], openDropdowns: [],
       activeTooltips: [], visibleNotifications: [],
     },
+    visibility: { overlays: [], loadingIndicators: false },
   };
 }
 

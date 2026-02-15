@@ -33,6 +33,8 @@ const MEDIA_FIXTURE: MediaLiveState = {
   duration: 60,
   volume: 1,
   muted: false,
+  fullscreen: false,
+  captions: false,
   playbackRate: 1,
   hasPlaylist: false,
 };

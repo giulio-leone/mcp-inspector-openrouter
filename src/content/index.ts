@@ -16,6 +16,7 @@ import {
   NavigationStateProvider,
   AuthStateProvider,
   InteractiveStateProvider,
+  VisibilityStateProvider,
 } from './live-state';
 
 // ── Guard against duplicate injection ──
@@ -41,6 +42,7 @@ if (window.__wmcp_loaded) {
   liveManager.registerProvider(new NavigationStateProvider());
   liveManager.registerProvider(new AuthStateProvider());
   liveManager.registerProvider(new InteractiveStateProvider());
+  liveManager.registerProvider(new VisibilityStateProvider());
 
   const pollingEngine = new PollingEngine(liveManager, {
     pollingIntervalMs: 1000,

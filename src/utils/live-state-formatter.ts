@@ -12,6 +12,7 @@ import type {
   NavigationLiveState,
   AuthLiveState,
   InteractiveLiveState,
+  VisibilityLiveState,
 } from '../types/live-state.types';
 
 /** Format seconds as mm:ss */
@@ -26,10 +27,13 @@ function formatMedia(media: readonly MediaLiveState[]): string | null {
   const lines = media.map((m) => {
     const status = m.paused ? '⏸️ PAUSED' : '▶️ PLAYING';
     const time = `${fmtTime(m.currentTime)}/${fmtTime(m.duration)}`;
+    const pct = m.duration > 0 ? ` (${Math.round((m.currentTime / m.duration) * 100)}%)` : '';
     const vol = `volume ${Math.round(m.volume * 100)}%`;
     const muted = m.muted ? ', 🔇 MUTED' : '';
+    const fullscreen = m.fullscreen ? ', 📺 FULLSCREEN' : '';
+    const captions = m.captions ? ', 💬 CAPTIONS ON' : '';
     const speed = m.playbackRate !== 1 ? `, speed ${m.playbackRate}x` : '';
-    return `  - "${m.title}" (${m.platform}): ${status} at ${time}, ${vol}${muted}${speed}`;
+    return `  - "${m.title}" (${m.platform}): ${status} at ${time}${pct}, ${vol}${muted}${fullscreen}${captions}${speed}`;
   });
   return `🎬 Media Players:\n${lines.join('\n')}`;
 }
@@ -93,6 +97,14 @@ function formatInteractive(inter: InteractiveLiveState): string | null {
   return `🎛️ Interactive:\n${parts.map((p) => `  - ${p}`).join('\n')}`;
 }
 
+function formatVisibility(vis: VisibilityLiveState): string | null {
+  const parts: string[] = [];
+  if (vis.overlays.length) parts.push(`Overlays blocking content: ${vis.overlays.map((o) => `"${o}"`).join(', ')}`);
+  if (vis.loadingIndicators) parts.push('⏳ Page is loading (spinners/skeleton screens detected)');
+  if (!parts.length) return null;
+  return `👁️ Visibility:\n${parts.map((p) => `  - ${p}`).join('\n')}`;
+}
+
 /** Convert a LiveStateSnapshot into a compact, human-readable prompt block. */
 export function formatLiveStateForPrompt(snapshot: LiveStateSnapshot): string {
   const sections: string[] = [
@@ -101,6 +113,7 @@ export function formatLiveStateForPrompt(snapshot: LiveStateSnapshot): string {
     formatNavigation(snapshot.navigation),
     formatAuth(snapshot.auth),
     formatInteractive(snapshot.interactive),
+    formatVisibility(snapshot.visibility),
   ].filter((s): s is string => s !== null);
 
   if (!sections.length) return '';

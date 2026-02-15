@@ -7,6 +7,7 @@ import type {
   NavigationLiveState,
   AuthLiveState,
   InteractiveLiveState,
+  VisibilityLiveState,
 } from '../../types/live-state.types';
 
 // ── Fixtures ──
@@ -30,6 +31,11 @@ const EMPTY_NAV: NavigationLiveState = {
   scrollPercent: 0,
 };
 
+const EMPTY_VISIBILITY: VisibilityLiveState = {
+  overlays: [],
+  loadingIndicators: false,
+};
+
 function makeSnapshot(overrides: Partial<LiveStateSnapshot> = {}): LiveStateSnapshot {
   return {
     timestamp: Date.now(),
@@ -38,6 +44,7 @@ function makeSnapshot(overrides: Partial<LiveStateSnapshot> = {}): LiveStateSnap
     navigation: EMPTY_NAV,
     auth: EMPTY_AUTH,
     interactive: EMPTY_INTERACTIVE,
+    visibility: EMPTY_VISIBILITY,
     ...overrides,
   };
 }
@@ -83,6 +90,8 @@ describe('formatLiveStateForPrompt', () => {
         duration: 135,
         volume: 0.5,
         muted: true,
+        fullscreen: false,
+        captions: false,
         playbackRate: 1,
         hasPlaylist: false,
       };
@@ -90,6 +99,63 @@ describe('formatLiveStateForPrompt', () => {
       expect(result).toContain('⏸️ PAUSED');
       expect(result).toContain('🔇 MUTED');
       expect(result).toContain('0:00/2:15');
+    });
+
+    it('shows fullscreen indicator', () => {
+      const media: MediaLiveState = {
+        playerId: 'yt-0',
+        platform: 'youtube',
+        title: 'Fullscreen Vid',
+        paused: false,
+        currentTime: 10,
+        duration: 100,
+        volume: 1,
+        muted: false,
+        fullscreen: true,
+        captions: false,
+        playbackRate: 1,
+        hasPlaylist: false,
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ media: [media] }));
+      expect(result).toContain('📺 FULLSCREEN');
+    });
+
+    it('shows captions indicator', () => {
+      const media: MediaLiveState = {
+        playerId: 'yt-0',
+        platform: 'youtube',
+        title: 'Captioned Vid',
+        paused: false,
+        currentTime: 10,
+        duration: 100,
+        volume: 1,
+        muted: false,
+        fullscreen: false,
+        captions: true,
+        playbackRate: 1,
+        hasPlaylist: false,
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ media: [media] }));
+      expect(result).toContain('💬 CAPTIONS ON');
+    });
+
+    it('shows progress percentage', () => {
+      const media: MediaLiveState = {
+        playerId: 'yt-0',
+        platform: 'youtube',
+        title: 'Half Done',
+        paused: false,
+        currentTime: 150,
+        duration: 300,
+        volume: 1,
+        muted: false,
+        fullscreen: false,
+        captions: false,
+        playbackRate: 1,
+        hasPlaylist: false,
+      };
+      const result = formatLiveStateForPrompt(makeSnapshot({ media: [media] }));
+      expect(result).toContain('2:30/5:00 (50%)');
     });
 
     it('includes speed when not 1x', () => {
@@ -102,6 +168,8 @@ describe('formatLiveStateForPrompt', () => {
         duration: 100,
         volume: 1,
         muted: false,
+        fullscreen: false,
+        captions: false,
         playbackRate: 2,
         hasPlaylist: false,
       };
@@ -119,6 +187,8 @@ describe('formatLiveStateForPrompt', () => {
         duration: 60,
         volume: 1,
         muted: false,
+        fullscreen: false,
+        captions: false,
         playbackRate: 1,
         hasPlaylist: false,
       };
@@ -350,7 +420,8 @@ describe('formatLiveStateForPrompt', () => {
       media: [{
         playerId: 'yt-0', platform: 'youtube', title: 'Song',
         paused: false, currentTime: 60, duration: 180,
-        volume: 1, muted: false, playbackRate: 1, hasPlaylist: false,
+        volume: 1, muted: false, fullscreen: false, captions: false,
+        playbackRate: 1, hasPlaylist: false,
       }],
       forms: [{
         formId: 'search', toolName: 'search', totalFields: 2,
@@ -365,6 +436,7 @@ describe('formatLiveStateForPrompt', () => {
         openModals: ['Modal'], expandedAccordions: [], openDropdowns: [],
         activeTooltips: [], visibleNotifications: [],
       },
+      visibility: { overlays: ['Cookie Banner'], loadingIndicators: true },
     });
     const result = formatLiveStateForPrompt(snapshot);
     expect(result).toContain('🎬');
@@ -372,5 +444,31 @@ describe('formatLiveStateForPrompt', () => {
     expect(result).toContain('🧭');
     expect(result).toContain('🔐');
     expect(result).toContain('🎛️');
+    expect(result).toContain('👁️');
+  });
+
+  describe('visibility formatting', () => {
+    it('formats overlays', () => {
+      const result = formatLiveStateForPrompt(makeSnapshot({
+        visibility: { overlays: ['Cookie Consent', 'Newsletter Popup'], loadingIndicators: false },
+      }));
+      expect(result).toContain('👁️ Visibility');
+      expect(result).toContain('"Cookie Consent"');
+      expect(result).toContain('"Newsletter Popup"');
+      expect(result).toContain('Overlays blocking content');
+    });
+
+    it('formats loading indicators', () => {
+      const result = formatLiveStateForPrompt(makeSnapshot({
+        visibility: { overlays: [], loadingIndicators: true },
+      }));
+      expect(result).toContain('👁️ Visibility');
+      expect(result).toContain('⏳ Page is loading');
+    });
+
+    it('omits visibility when empty', () => {
+      const result = formatLiveStateForPrompt(makeSnapshot());
+      expect(result).not.toContain('👁️');
+    });
   });
 });

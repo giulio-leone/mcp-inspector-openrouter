@@ -14,6 +14,7 @@ import type {
   NavigationLiveState,
   AuthLiveState,
   InteractiveLiveState,
+  VisibilityLiveState,
 } from '../../types/live-state.types';
 
 /** Default navigation state when no provider is registered */
@@ -36,6 +37,12 @@ const DEFAULT_INTERACTIVE: InteractiveLiveState = {
   openDropdowns: [],
   activeTooltips: [],
   visibleNotifications: [],
+};
+
+/** Default visibility state when no provider is registered */
+const DEFAULT_VISIBILITY: VisibilityLiveState = {
+  overlays: [],
+  loadingIndicators: false,
 };
 
 /**
@@ -64,6 +71,7 @@ export class LiveStateManager {
     let navigation: NavigationLiveState = DEFAULT_NAVIGATION;
     let auth: AuthLiveState = DEFAULT_AUTH;
     let interactive: InteractiveLiveState = DEFAULT_INTERACTIVE;
+    let visibility: VisibilityLiveState = DEFAULT_VISIBILITY;
 
     for (const provider of this.providers) {
       const result = provider.collect(root);
@@ -94,6 +102,11 @@ export class LiveStateManager {
             Array.isArray(result) ? result[0] ?? DEFAULT_INTERACTIVE : result
           ) as InteractiveLiveState;
           break;
+        case 'visibility':
+          visibility = (
+            Array.isArray(result) ? result[0] ?? DEFAULT_VISIBILITY : result
+          ) as VisibilityLiveState;
+          break;
       }
     }
 
@@ -104,6 +117,7 @@ export class LiveStateManager {
       navigation,
       auth,
       interactive,
+      visibility,
     };
 
     this.latestSnapshot = snapshot;

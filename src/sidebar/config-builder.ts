@@ -411,10 +411,13 @@ export function buildChatConfig(
       if (liveBlock) {
         systemInstruction.push(
           '',
-          '19. **LIVE STATE AWARENESS (CRITICAL):** The LIVE PAGE STATE below shows the current state of media players, forms, navigation, auth, and interactive elements. ' +
+          '19. **LIVE STATE AWARENESS (CRITICAL):** The LIVE PAGE STATE below shows the current state of media players, forms, navigation, auth, interactive elements, and page visibility. ' +
             'Use this to make smart decisions: (a) Do NOT play a video that is already playing — use seek(0) + play to restart. ' +
             '(b) Do NOT pause a video that is already paused. (c) Check form completion before submitting. ' +
             '(d) Be aware of open modals, expanded accordions, and current scroll position. ' +
+            '(e) Check if overlays (cookie banners, popups) are blocking content — dismiss them before interacting. ' +
+            '(f) If the page is loading (spinners/skeleton screens), wait or inform the user. ' +
+            '(g) Check media fullscreen and captions state before toggling them. ' +
             'The LIVE STATE is REAL-TIME and updates continuously — always trust it over assumptions.',
           '',
           liveBlock,

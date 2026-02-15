@@ -17,6 +17,8 @@ export interface MediaLiveState {
   readonly duration: number;
   readonly volume: number;
   readonly muted: boolean;
+  readonly fullscreen: boolean;
+  readonly captions: boolean;
   readonly playbackRate: number;
   readonly hasPlaylist: boolean;
   readonly playlistIndex?: number;
@@ -73,6 +75,12 @@ export interface InteractiveLiveState {
   readonly visibleNotifications: readonly string[];
 }
 
+/** Live state for DOM visibility context (overlays, loading indicators) */
+export interface VisibilityLiveState {
+  readonly overlays: readonly string[];
+  readonly loadingIndicators: boolean;
+}
+
 // ── Union / Aggregate Types ──
 
 /** Union of all category-specific live states */
@@ -81,7 +89,8 @@ export type CategoryLiveState =
   | FormLiveState
   | NavigationLiveState
   | AuthLiveState
-  | InteractiveLiveState;
+  | InteractiveLiveState
+  | VisibilityLiveState;
 
 /** Aggregated snapshot of the entire page's live state */
 export interface LiveStateSnapshot {
@@ -91,6 +100,7 @@ export interface LiveStateSnapshot {
   readonly navigation: NavigationLiveState;
   readonly auth: AuthLiveState;
   readonly interactive: InteractiveLiveState;
+  readonly visibility: VisibilityLiveState;
 }
 
 // ── Category Enum ──
@@ -101,7 +111,8 @@ export type LiveStateCategory =
   | 'form'
   | 'navigation'
   | 'auth'
-  | 'interactive';
+  | 'interactive'
+  | 'visibility';
 
 // ── Provider Interface ──
 
