@@ -58,16 +58,18 @@ describe('StatusBar', () => {
     expect(div!.classList.contains('status-bar--info')).toBe(true);
   });
 
-  it('renders nothing when message is empty', async () => {
+  it('handles empty message — no .status-bar div rendered', async () => {
     el = await createElement({ message: '' });
-    const div = el.querySelector('.status-bar');
-    expect(div).toBeNull();
+    expect(el.message).toBe('');
+    expect(el.type).toBe('info');
+    expect(el.querySelector('.status-bar')).toBeNull();
   });
 
-  it('renders nothing by default (no message)', async () => {
+  it('handles default (no message) — no .status-bar div rendered', async () => {
     el = await createElement();
-    const div = el.querySelector('.status-bar');
-    expect(div).toBeNull();
+    expect(el.message).toBe('');
+    expect(el.type).toBe('info');
+    expect(el.querySelector('.status-bar')).toBeNull();
   });
 
   it('updates reactively when message changes', async () => {
