@@ -16,6 +16,7 @@ import type { IContextPort } from '../ports/context.port';
 import type { IContextManagerPort } from '../ports/context-manager.port';
 import type { ITabSessionPort } from '../ports/tab-session.port';
 import type { ISubagentPort } from '../ports/subagent.port';
+import type { ITabDelegationPort } from '../ports/tab-delegation.port';
 import type {
   AgentContext,
   AgentResult,
@@ -32,6 +33,7 @@ import type { ChatConfig } from '../services/adapters/openrouter';
 import type { ToolResponse, ParsedFunctionCall, PageContext, CleanTool, ContentPart } from '../types';
 import { isNavigationTool, waitForPageAndRescan } from '../sidebar/tool-loop';
 import { logger } from '../sidebar/debug-logger';
+import { detectSkills } from './skill-detector';
 
 const DEFAULT_MAX_ITERATIONS = 0;
 const DEFAULT_LOOP_TIMEOUT_MS = 0;
@@ -50,6 +52,7 @@ export interface OrchestratorDeps {
   readonly contextManager?: IContextManagerPort;
   readonly tabSession?: ITabSessionPort;
   readonly subagentPort?: ISubagentPort;
+  readonly delegation?: ITabDelegationPort;
   readonly depth?: number;
   readonly limits?: OrchestratorLimits;
   readonly chatFactory: () => OpenRouterChat;
@@ -136,6 +139,22 @@ export class AgentOrchestrator implements IAgentPort {
     let tools = [...context.tools] as ToolDefinition[];
     const toolCallRecords: ToolCallRecord[] = [];
 
+    // Inject delegate_task tool when delegation adapter is wired
+    if (this.deps.delegation && !tools.some(t => t.name === 'delegate_task')) {
+      tools.push({
+        name: 'delegate_task',
+        description: 'Delegate a task to another browser tab based on its capabilities',
+        parametersSchema: {
+          type: 'object',
+          properties: {
+            required_skills: { type: 'array', items: { type: 'string' }, description: 'Skills needed for the task (e.g., video, email, code)' },
+            task: { type: 'string', description: 'Description of the task to perform' },
+          },
+          required: ['required_skills', 'task'],
+        },
+      });
+    }
+
     // Seed initial tab context so storeData() works from the first tool call
     if (tabSession && pageContext) {
       tabSession.setTabContext(target.tabId, {
@@ -143,6 +162,11 @@ export class AgentOrchestrator implements IAgentPort {
         title: pageContext.title ?? '',
         extractedData: {},
       });
+      // Auto-register tab skills with delegation adapter
+      if (this.deps.delegation) {
+        const detected = detectSkills(pageContext.url ?? '', pageContext.title ?? '');
+        this.deps.delegation.registerTab(target.tabId, pageContext.url ?? '', pageContext.title ?? '', [...detected.skills]);
+      }
     }
 
     const maxIterations = this.deps.limits?.maxIterations ?? DEFAULT_MAX_ITERATIONS;
@@ -197,6 +221,33 @@ export class AgentOrchestrator implements IAgentPort {
           }
           const verb = fc.name === 'create_plan' ? 'created' : 'updated';
           toolResponses.push(this.toToolResponse(fc, { result: `Plan "${args.goal}" ${verb}` }));
+          continue;
+        }
+
+        // Cross-tab delegation via TabDelegationAdapter
+        if (fc.name === 'delegate_task' && this.deps.delegation) {
+          const delegateArgs = fc.args as { required_skills: string[]; task: string };
+          const matchedTab = this.deps.delegation.findTabForTask(delegateArgs.required_skills);
+          if (!matchedTab) {
+            toolResponses.push(this.toToolResponse(fc, {
+              error: `No tab found with skills: ${delegateArgs.required_skills.join(', ')}`,
+            }));
+          } else {
+            const delegationResult = await this.deps.delegation.delegate(
+              target.tabId,
+              matchedTab.tabId,
+              delegateArgs.task,
+            );
+            if (delegationResult.status === 'completed') {
+              toolResponses.push(this.toToolResponse(fc, {
+                result: `Delegated to tab "${matchedTab.title}" (${matchedTab.url}): ${JSON.stringify(delegationResult.result)}`,
+              }));
+            } else {
+              toolResponses.push(this.toToolResponse(fc, {
+                error: delegationResult.error ?? 'Delegation failed',
+              }));
+            }
+          }
           continue;
         }
 
@@ -291,6 +342,11 @@ export class AgentOrchestrator implements IAgentPort {
                 title: pageContext.title ?? '',
                 extractedData: {},
               });
+              // Auto-register updated skills after navigation
+              if (this.deps.delegation) {
+                const detected = detectSkills(pageContext.url ?? '', pageContext.title ?? '');
+                this.deps.delegation.registerTab(target.tabId, pageContext.url ?? '', pageContext.title ?? '', [...detected.skills]);
+              }
             }
             break;
           }
