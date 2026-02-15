@@ -301,8 +301,8 @@ export async function executeToolLoop(params: ToolLoopParams): Promise<ToolLoopR
     }
   }
 
-  if (iteration >= MAX_TOOL_ITERATIONS && !finalResponseGiven) {
-    addMessage('error', '⚠️ Reached maximum tool execution iterations (10). Stopping to prevent infinite loop.');
+  if (maxIterations > 0 && iteration >= maxIterations && !finalResponseGiven) {
+    addMessage('error', `⚠️ Reached maximum tool execution iterations (${maxIterations}). Stopping to prevent infinite loop.`);
   }
 
   return { pageContext, currentTools };
