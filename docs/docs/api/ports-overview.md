@@ -22,6 +22,7 @@ The hexagonal architecture defines **20+ stable port interfaces** that decouple 
 | [`IProductivityPort`](./productivity-port) | `productivity.port.ts` | Notion, GitHub, Google Docs, Trello, Slack |
 | [`IToolManifestPort`](./tool-manifest-port) | `tool-manifest.port.ts` | Auto-generated MCP tool manifests |
 | [`IGesturePort`](./gesture-port) | `gesture.port.ts` | Touch gesture simulation |
+| [`IWmcpServerPort`](./wmcp-server) | `wmcp-server.port.ts` | WebMCP manifest injection and event protocol |
 
 ## Dependency Flow
 
@@ -38,3 +39,7 @@ AIChatController
 ```
 
 All ports are defined as `readonly` properties in `OrchestratorDeps`, enforcing immutability at the type level.
+
+## Workflow & A2A
+
+The orchestrator supports multi-step workflows through `IPlanningPort` and agent-to-agent (A2A) delegation via `ISubagentPort`. Workflow plans are decomposed into steps, each executed through the appropriate port, enabling complex cross-platform automation sequences.
