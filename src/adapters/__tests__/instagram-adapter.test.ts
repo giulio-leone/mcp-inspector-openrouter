@@ -271,19 +271,31 @@ describe('InstagramAdapter', () => {
   // ── Profile: followUser ──
 
   it('followUser clicks the follow button', async () => {
+    setLocation('https://www.instagram.com/user123/');
     const btn = addElement('button', { 'data-testid': 'follow-button' });
     const spy = vi.spyOn(btn, 'click');
     await adapter.followUser('user123');
     expect(spy).toHaveBeenCalled();
   });
 
+  it('followUser throws if not on correct profile', async () => {
+    setLocation('https://www.instagram.com/otheruser/');
+    await expect(adapter.followUser('user123')).rejects.toThrow(/not on their profile/);
+  });
+
   it('followUser throws if button not found', async () => {
+    setLocation('https://www.instagram.com/nobody/');
     await expect(adapter.followUser('nobody')).rejects.toThrow(/Instagram element not found.*follow/i);
+  });
+
+  it('followUser throws on empty username', async () => {
+    await expect(adapter.followUser('')).rejects.toThrow(/non-empty/);
   });
 
   // ── Profile: unfollowUser ──
 
   it('unfollowUser clicks the unfollow button', async () => {
+    setLocation('https://www.instagram.com/user123/');
     const btn = addElement('button', { 'data-testid': 'unfollow-button' });
     const spy = vi.spyOn(btn, 'click');
     await adapter.unfollowUser('user123');
@@ -303,5 +315,13 @@ describe('InstagramAdapter', () => {
     await expect(adapter.openConversation('nobody')).rejects.toThrow(
       /Instagram element not found.*conversation with @nobody/i,
     );
+  });
+
+  it('openConversation throws on empty username', async () => {
+    await expect(adapter.openConversation('')).rejects.toThrow(/non-empty/);
+  });
+
+  it('viewStory throws on empty username', async () => {
+    await expect(adapter.viewStory('')).rejects.toThrow(/non-empty/);
   });
 });

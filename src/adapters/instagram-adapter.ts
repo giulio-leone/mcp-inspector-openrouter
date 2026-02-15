@@ -49,11 +49,18 @@ function setReactInputValue(el: HTMLInputElement | HTMLTextAreaElement, value: s
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+/** Validate that a username is non-empty after trimming */
+function requireUsername(username: string): string {
+  const trimmed = username.trim();
+  if (!trimmed) throw new Error('username must be non-empty');
+  return trimmed;
+}
+
 export class InstagramAdapter implements IInstagramPort {
   // ── Stories ──
 
   async viewStory(username: string): Promise<void> {
-    const safe = CSS.escape(username);
+    const safe = CSS.escape(requireUsername(username));
     const selectors = [
       `[role="button"] img[alt*="${safe}" i]`,
       `canvas[aria-label*="${safe}" i]`,
@@ -219,8 +226,9 @@ export class InstagramAdapter implements IInstagramPort {
   }
 
   async openConversation(username: string): Promise<void> {
+    const u = requireUsername(username);
     const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="/direct/"]'));
-    const match = links.find((a) => a.textContent?.toLowerCase().includes(username.toLowerCase()));
+    const match = links.find((a) => a.textContent?.toLowerCase().includes(u.toLowerCase()));
     if (match) {
       match.click();
       return;
@@ -232,7 +240,14 @@ export class InstagramAdapter implements IInstagramPort {
 
   // ── Profile ──
 
-  async followUser(_username: string): Promise<void> {
+  async followUser(username: string): Promise<void> {
+    const u = requireUsername(username);
+    // Verify we're on the correct profile page
+    const expected = `/${u}/`;
+    if (!location.pathname.startsWith(expected)) {
+      throw new Error(`Cannot follow @${u}: not on their profile (expected ${expected}, got ${location.pathname})`);
+    }
+
     // Look for Follow button by data-testid or by text content
     const testIdBtn = document.querySelector<HTMLElement>('[data-testid="follow-button"]');
     if (testIdBtn) { testIdBtn.click(); return; }
@@ -245,7 +260,12 @@ export class InstagramAdapter implements IInstagramPort {
     throw new Error('Instagram element not found: follow button (tried: [data-testid="follow-button"], header button with text "Follow")');
   }
 
-  async unfollowUser(_username: string): Promise<void> {
+  async unfollowUser(username: string): Promise<void> {
+    const u = requireUsername(username);
+    const expected = `/${u}/`;
+    if (!location.pathname.startsWith(expected)) {
+      throw new Error(`Cannot unfollow @${u}: not on their profile (expected ${expected}, got ${location.pathname})`);
+    }
     clickElement(
       ['[data-testid="unfollow-button"]', 'button[aria-label*="Following" i]'],
       'unfollow button',
