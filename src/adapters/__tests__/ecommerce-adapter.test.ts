@@ -261,6 +261,19 @@ describe('EcommerceAdapter', () => {
     it('throws when variant selector not found', async () => {
       await expect(adapter.selectVariant('XL')).rejects.toThrow('Variant selector not found');
     });
+
+    it('throws when variant value not in available options', async () => {
+      (window as Record<string, unknown>)['Shopify'] = {};
+      const container = addElement('div', { class: 'product__variants' });
+      const select = document.createElement('select');
+      const option = document.createElement('option');
+      option.value = 'Small';
+      option.textContent = 'Small';
+      select.appendChild(option);
+      container.appendChild(select);
+
+      await expect(adapter.selectVariant('NonExistent')).rejects.toThrow('not found in available options');
+    });
   });
 
   // ── setQuantity ──

@@ -178,10 +178,6 @@ export class EcommerceAdapter implements IEcommercePort {
       });
     });
 
-    const inStockEl = queryFirst<HTMLElement>([
-      '.in-stock',
-      '.stock.in-stock',
-    ]);
     const outOfStockEl = queryFirst<HTMLElement>([
       '.out-of-stock',
       '.stock.out-of-stock',
@@ -272,11 +268,13 @@ export class EcommerceAdapter implements IEcommercePort {
     const rows = document.querySelectorAll<HTMLElement>(
       '.cart-item, .cart_item, tr.woocommerce-cart-form__cart-item',
     );
+    let itemFound = false;
     for (const row of rows) {
       const nameEl = row.querySelector<HTMLElement>(
         '.cart-item__name, .product-name a, td.product-name a',
       );
       if (nameEl?.textContent?.trim().toLowerCase() === safe.toLowerCase()) {
+        itemFound = true;
         const removeBtn = row.querySelector<HTMLElement>('.remove, a.remove, .cart-item__remove');
         if (removeBtn) {
           removeBtn.click();
@@ -284,7 +282,9 @@ export class EcommerceAdapter implements IEcommercePort {
         }
       }
     }
-    throw new Error(`Cart item "${itemName}" not found`);
+    throw new Error(itemFound
+      ? `Remove button not found for "${itemName}"`
+      : `Cart item "${itemName}" not found`);
   }
 
   async updateCartQuantity(itemName: string, quantity: number): Promise<void> {
@@ -293,11 +293,13 @@ export class EcommerceAdapter implements IEcommercePort {
     const rows = document.querySelectorAll<HTMLElement>(
       '.cart-item, .cart_item, tr.woocommerce-cart-form__cart-item',
     );
+    let itemFound = false;
     for (const row of rows) {
       const nameEl = row.querySelector<HTMLElement>(
         '.cart-item__name, .product-name a, td.product-name a',
       );
       if (nameEl?.textContent?.trim().toLowerCase() === itemName.trim().toLowerCase()) {
+        itemFound = true;
         const qtyInput = row.querySelector<HTMLInputElement>('input[name*="quantity"], input.qty');
         if (qtyInput) {
           qtyInput.value = String(quantity);
@@ -306,7 +308,9 @@ export class EcommerceAdapter implements IEcommercePort {
         }
       }
     }
-    throw new Error(`Cart item "${itemName}" not found`);
+    throw new Error(itemFound
+      ? `Quantity input not found for "${itemName}"`
+      : `Cart item "${itemName}" not found`);
   }
 
   // ── Checkout ──
