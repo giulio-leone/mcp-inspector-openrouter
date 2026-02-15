@@ -280,6 +280,13 @@ describe('AgentOrchestrator — Integration Tests', () => {
 
       // Only the navigate tool should be executed
       expect(mocks.toolPort.execute).toHaveBeenCalledTimes(1);
+      // Verify skipped tool responses are sent to AI
+      const secondCall = mocks.mockChat.sendMessage.mock.calls[1];
+      const toolResponses = secondCall[0].message;
+      const hasSkipped = toolResponses.some((r: Record<string, unknown>) =>
+        JSON.stringify(r).includes('Skipped'),
+      );
+      expect(hasSkipped).toBe(true);
     });
 
     it('updates tab session after navigation rescan', async () => {
@@ -530,7 +537,11 @@ describe('AgentOrchestrator — Integration Tests', () => {
 
       const result = await orch.run('go', makeContext());
 
-      expect(mocks.mockChat.sendMessage.mock.calls.length).toBeLessThan(100);
+      // With perf.now returning 0, 200, 400, 600, 800, 1000, 1200...
+      // Timeout fires when elapsed > 1000, so at iteration 6 (1200 > 1000)
+      // sendMessage: 1 initial + 5 loop iterations = 6 calls
+      expect(mocks.mockChat.sendMessage.mock.calls.length).toBeLessThanOrEqual(7);
+      expect(mocks.mockChat.sendMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
       spy.mockRestore();
     });
   });
@@ -701,9 +712,14 @@ describe('AgentOrchestrator — Integration Tests', () => {
 
       await orchestrator.run('go', makeContext());
 
-      const configCall = mocks.buildConfig.mock.calls[0];
-      // Should be called with page context and tools
-      expect(configCall.length).toBe(2);
+      // Verify sendMessage received a config with session context in systemInstruction
+      const sendCall = mocks.mockChat.sendMessage.mock.calls[0];
+      const config = sendCall[0].config;
+      const systemInstructions = config.systemInstruction ?? [];
+      const hasSessionContext = systemInstructions.some(
+        (s: string) => s.includes('MULTI-TAB SESSION CONTEXT') || s.includes('Session context summary'),
+      );
+      expect(hasSessionContext).toBe(true);
     });
 
     it('calls endSession on dispose', async () => {
