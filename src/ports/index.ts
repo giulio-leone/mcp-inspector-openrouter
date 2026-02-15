@@ -25,6 +25,12 @@ export type {
   ScheduleOptions,
 } from './cron-scheduler.port';
 export type {
+  IToolCachePort,
+  SiteManifest,
+  CachedPage,
+  ToolDiff,
+} from './tool-cache.port';
+export type {
   INavigationPlanPort,
   NavigationStepType,
   StepErrorStrategy,
