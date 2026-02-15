@@ -42,6 +42,7 @@ export type {
   ConfirmExecuteMessage,
   CancelExecuteMessage,
   CaptureScreenshotMessage,
+  GetSiteManifestMessage,
   ContentScriptMessage,
   AIClassifyMessage,
   BackgroundMessage,

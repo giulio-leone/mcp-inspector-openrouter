@@ -8,6 +8,7 @@ import { SECURITY_TIERS, STORAGE_KEY_YOLO_MODE } from '../utils/constants';
 import { getSecurityTier } from './merge';
 import { extractPageContext } from './page-context';
 import type { ToolRegistry } from './tool-registry';
+import { extractSite } from '../adapters/indexeddb-tool-cache-adapter';
 
 export function createMessageHandler(registry: ToolRegistry): void {
   // ── YOLO mode (cached, updated on storage change) ──
@@ -250,6 +251,17 @@ export function createMessageHandler(registry: ToolRegistry): void {
     return false;
   }
 
+  function handleGetSiteManifest(reply: (r?: unknown) => void): boolean {
+    const manifest = registry.getToolManifest();
+    if (!manifest) {
+      reply({ error: 'Tool manifest not available' });
+      return false;
+    }
+    const site = extractSite(location.href);
+    reply({ manifest: manifest.toMCPJson(site) });
+    return false;
+  }
+
   // ── Register the message listener ──
   chrome.runtime.onMessage.addListener(
     (
@@ -279,6 +291,8 @@ export function createMessageHandler(registry: ToolRegistry): void {
             return handleCancelExecute(msg, reply);
           case 'CAPTURE_SCREENSHOT':
             return false;
+          case 'GET_SITE_MANIFEST':
+            return handleGetSiteManifest(reply);
           default:
             return false;
         }

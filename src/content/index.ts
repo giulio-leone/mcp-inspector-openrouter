@@ -19,6 +19,7 @@ import {
   VisibilityStateProvider,
 } from './live-state';
 import { IndexedDBToolCacheAdapter } from '../adapters/indexeddb-tool-cache-adapter';
+import { ToolManifestAdapter } from '../adapters/tool-manifest-adapter';
 
 // ── Guard against duplicate injection ──
 if (window.__wmcp_loaded) {
@@ -29,6 +30,7 @@ if (window.__wmcp_loaded) {
 
   const registry = new ToolRegistry();
   registry.setToolCache(new IndexedDBToolCacheAdapter());
+  registry.setToolManifest(new ToolManifestAdapter());
 
   createMessageHandler(registry);
 

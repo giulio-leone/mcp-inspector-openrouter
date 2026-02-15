@@ -53,6 +53,10 @@ export interface GetToolsSyncMessage {
   readonly action: 'GET_TOOLS_SYNC';
 }
 
+export interface GetSiteManifestMessage {
+  readonly action: 'GET_SITE_MANIFEST';
+}
+
 /** All messages that can be sent TO the content script */
 export type ContentScriptMessage =
   | PingMessage
@@ -64,7 +68,8 @@ export type ContentScriptMessage =
   | GetCrossDocumentResultMessage
   | ConfirmExecuteMessage
   | CancelExecuteMessage
-  | CaptureScreenshotMessage;
+  | CaptureScreenshotMessage
+  | GetSiteManifestMessage;
 
 // ── Background Script Messages ──
 
