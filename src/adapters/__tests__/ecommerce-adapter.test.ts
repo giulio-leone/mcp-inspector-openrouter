@@ -586,7 +586,7 @@ describe('EcommerceAdapter', () => {
     it('rejects when page context shows different product', async () => {
       const el = document.createElement('span');
       el.setAttribute('data-product-id', 'other-product');
-      el.textContent = 'other-product';
+      el.textContent = 'Other Widget';
       document.body.appendChild(el);
 
       await expect(adapter.deleteProduct('target-product')).rejects.toThrow(

@@ -630,7 +630,8 @@ export class EcommerceAdapter implements IEcommercePort {
       const statusEl = row.querySelector<HTMLElement>('.stock-status, [data-stock-status]');
 
       if (idEl || row.getAttribute('data-product-id')) {
-        const qty = parseInt(qtyEl?.textContent?.trim() ?? '0', 10);
+        const rawQty = parseInt(qtyEl?.textContent?.trim() ?? '0', 10);
+        const qty = Number.isNaN(rawQty) ? 0 : rawQty;
         const rawStatus = statusEl?.textContent?.trim().toLowerCase() ?? '';
         let status: 'in_stock' | 'low_stock' | 'out_of_stock';
         if (rawStatus.includes('out') || qty === 0) {
@@ -747,9 +748,9 @@ export class EcommerceAdapter implements IEcommercePort {
     const idEl = document.querySelector<HTMLElement>(
       '[data-product-id], .product-id, input[name="product-id"], input[name="id"]',
     );
-    const pageProductId = idEl?.textContent?.trim()
+    const pageProductId = idEl?.getAttribute('data-product-id')
       ?? (idEl as HTMLInputElement | null)?.value
-      ?? idEl?.getAttribute('data-product-id')
+      ?? idEl?.textContent?.trim()
       ?? '';
     if (pageProductId && pageProductId !== productId) {
       throw new Error(
