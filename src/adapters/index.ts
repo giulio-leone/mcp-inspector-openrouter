@@ -32,3 +32,4 @@ export { ToolManifestAdapter } from './tool-manifest-adapter';
 export { ManifestPersistenceAdapter } from './manifest-persistence-adapter';
 export { GitHubAdapter } from './github-adapter';
 export { ProductivityAdapter } from './productivity-adapter';
+export { WorkflowAdapter } from './workflow-adapter';

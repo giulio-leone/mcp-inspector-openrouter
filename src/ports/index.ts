@@ -49,6 +49,16 @@ export type {
 export type { IWmcpServerPort } from './wmcp-server.port';
 export type { IManifestPersistencePort } from './manifest-persistence.port';
 export type {
+  IWorkflowPort,
+  WorkflowDef,
+  WorkflowStepDef,
+  WorkflowContextMap,
+  WorkflowRunResult,
+  WorkflowRunEvent,
+  WorkflowEventType,
+  WorkflowEventCallback,
+} from './workflow.port';
+export type {
   INavigationPlanPort,
   NavigationStepType,
   StepErrorStrategy,
