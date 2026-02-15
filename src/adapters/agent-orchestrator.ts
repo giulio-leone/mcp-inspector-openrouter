@@ -15,6 +15,7 @@ import type { IPlanningPort } from '../ports/planning.port';
 import type { IContextPort } from '../ports/context.port';
 import type { IContextManagerPort } from '../ports/context-manager.port';
 import type { ITabSessionPort } from '../ports/tab-session.port';
+import type { ISubagentPort } from '../ports/subagent.port';
 import type {
   AgentContext,
   AgentResult,
@@ -41,6 +42,8 @@ export interface OrchestratorDeps {
   readonly planningPort: IPlanningPort;
   readonly contextManager?: IContextManagerPort;
   readonly tabSession?: ITabSessionPort;
+  readonly subagentPort?: ISubagentPort;
+  readonly depth?: number;
   readonly chatFactory: () => OpenRouterChat;
   readonly buildConfig: (ctx: PageContext | null, tools: readonly ToolDefinition[]) => ChatConfig;
 }
@@ -75,6 +78,15 @@ export class AgentOrchestrator implements IAgentPort {
     }));
     unsubs.push(this.eventBus.on('navigation', (data) => {
       listener({ type: 'navigation', toolName: data.toolName });
+    }));
+    unsubs.push(this.eventBus.on('subagent:started', (data) => {
+      listener({ type: 'subagent_started', subagentId: data.subagentId, task: data.task });
+    }));
+    unsubs.push(this.eventBus.on('subagent:completed', (data) => {
+      listener({ type: 'subagent_completed', subagentId: data.subagentId, text: data.text, stepsCompleted: data.stepsCompleted });
+    }));
+    unsubs.push(this.eventBus.on('subagent:failed', (data) => {
+      listener({ type: 'subagent_failed', subagentId: data.subagentId, error: data.error });
     }));
     unsubs.push(this.eventBus.on('timeout', () => {
       listener({ type: 'timeout' });
@@ -174,6 +186,45 @@ export class AgentOrchestrator implements IAgentPort {
           }
           const verb = fc.name === 'create_plan' ? 'created' : 'updated';
           toolResponses.push(this.toToolResponse(fc, { result: `Plan "${args.goal}" ${verb}` }));
+          continue;
+        }
+
+        // Subagent delegation handled locally
+        if (fc.name === 'delegate_task' && this.deps.subagentPort) {
+          const delegateArgs = fc.args as { prompt: string; instructions?: string; timeoutMs?: number };
+          const taskDescription = delegateArgs.prompt.slice(0, 100);
+
+          try {
+            this.eventBus.emit('subagent:started', { subagentId: '', task: taskDescription });
+
+            const subResult = await this.deps.subagentPort.spawn({
+              prompt: delegateArgs.prompt,
+              instructions: delegateArgs.instructions,
+              timeoutMs: delegateArgs.timeoutMs,
+              depth: (this.deps.depth ?? 0) + 1,
+              tools: tools,
+              context: { pageContext, tools, conversationHistory: [], liveState: null, tabId: target.tabId },
+            });
+
+            if (subResult.success) {
+              this.eventBus.emit('subagent:completed', {
+                subagentId: subResult.subagentId,
+                text: subResult.text,
+                stepsCompleted: subResult.stepsCompleted,
+              });
+              toolResponses.push(this.toToolResponse(fc, { result: subResult.text }));
+            } else {
+              this.eventBus.emit('subagent:failed', {
+                subagentId: subResult.subagentId,
+                error: subResult.error ?? 'Subagent failed',
+              });
+              toolResponses.push(this.toToolResponse(fc, { error: subResult.error ?? 'Subagent failed' }));
+            }
+          } catch (spawnErr) {
+            const errorMsg = (spawnErr as Error).message ?? 'Subagent spawn failed';
+            this.eventBus.emit('subagent:failed', { subagentId: '', error: errorMsg });
+            toolResponses.push(this.toToolResponse(fc, { error: errorMsg }));
+          }
           continue;
         }
 

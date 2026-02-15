@@ -67,6 +67,8 @@ describe('formatLiveStateForPrompt', () => {
         duration: 213,
         volume: 0.8,
         muted: false,
+        fullscreen: false,
+        captions: false,
         playbackRate: 1,
         hasPlaylist: false,
       };
@@ -75,6 +77,7 @@ describe('formatLiveStateForPrompt', () => {
       expect(result).toContain('🎬 Media Players');
       expect(result).toContain('▶️ PLAYING');
       expect(result).toContain('1:23/3:33');
+      expect(result).toContain('(39%)');
       expect(result).toContain('volume 80%');
       expect(result).toContain('"Test Video"');
       expect(result).toContain('(youtube)');

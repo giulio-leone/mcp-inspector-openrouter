@@ -26,10 +26,24 @@ function generateId(): string {
 
 export class SubagentAdapter implements ISubagentPort {
   private readonly active = new Map<string, { info: SubagentInfo; abort: AbortController }>();
+  private readonly maxDepth: number;
 
-  constructor(private readonly agentFactory: () => IAgentPort) {}
+  constructor(private readonly agentFactory: () => IAgentPort, maxDepth = 2) {
+    this.maxDepth = maxDepth;
+  }
 
   async spawn(task: SubagentTask): Promise<SubagentResult> {
+    const depth = task.depth ?? 0;
+    if (depth >= this.maxDepth) {
+      return {
+        subagentId: '',
+        text: '',
+        success: false,
+        stepsCompleted: 0,
+        error: `Max subagent depth (${this.maxDepth}) reached`,
+      };
+    }
+
     if (this.active.size >= MAX_CONCURRENT) {
       return {
         subagentId: '',
@@ -70,9 +84,9 @@ export class SubagentAdapter implements ISubagentPort {
       const result = await Promise.race([
         agent.run(task.prompt, context),
         new Promise<never>((_, reject) => {
-          abort.signal.addEventListener('abort', () =>
-            reject(new Error('Subagent cancelled')),
-          );
+          const onAbort = () => reject(new Error('Subagent cancelled'));
+          abort.signal.addEventListener('abort', onAbort);
+          if (abort.signal.aborted) onAbort();
         }),
       ]);
 

@@ -26,7 +26,9 @@ import { AgentOrchestrator } from '../adapters/agent-orchestrator';
 import { ChromeToolAdapter } from '../adapters/chrome-tool-adapter';
 import { ApprovalGateAdapter } from '../adapters/approval-gate-adapter';
 import { PlanningAdapter } from '../adapters/planning-adapter';
+import { SubagentAdapter } from '../adapters/subagent-adapter';
 import type { ITabSessionPort } from '../ports/tab-session.port';
+import type { IPlanningPort } from '../ports/planning.port';
 import { getSecurityTier } from '../content/merge';
 import { showApprovalDialog } from './security-dialog';
 import type { SecurityDialog } from '../components/security-dialog';
@@ -384,11 +386,38 @@ export class AIChatController {
       endSession: () => {},
     };
 
+    // Read API credentials for subagent chat instances (independent from parent)
+    const subagentStorage = await chrome.storage.local.get([STORAGE_KEY_API_KEY, STORAGE_KEY_MODEL]);
+    const subagentApiKey = (subagentStorage[STORAGE_KEY_API_KEY] as string) ?? '';
+    const subagentModel = (subagentStorage[STORAGE_KEY_MODEL] as string) ?? DEFAULT_MODEL;
+
     const orchestrator = new AgentOrchestrator({
       toolPort: approvalGate,
       contextPort: {} as any, // Not used during run() — context is passed inline
       planningPort: planningAdapter,
       tabSession: sessionProxy,
+      subagentPort: new SubagentAdapter(() => {
+        // Each subagent gets its own OpenRouterChat to avoid history corruption
+        const subChat = new OpenRouterChat(subagentApiKey, subagentModel);
+        // Subagents get a no-op planning port to avoid corrupting parent's plan state
+        const noopPlanning: IPlanningPort = {
+          createPlan: () => ({ goal: '', steps: [], status: 'pending', createdAt: Date.now() }),
+          updatePlan: () => ({ goal: '', steps: [], status: 'pending', createdAt: Date.now() }),
+          getCurrentPlan: () => null,
+          advanceStep: () => {},
+          markStepDone: () => {},
+          markStepFailed: () => {},
+          onPlanChanged: () => () => {},
+        };
+        return new AgentOrchestrator({
+          toolPort: approvalGate,
+          contextPort: {} as any,
+          planningPort: noopPlanning,
+          chatFactory: () => subChat,
+          buildConfig: (ctx, tools) =>
+            buildChatConfig(ctx, tools as unknown as CleanTool[], planManager.planModeEnabled, mentionContexts),
+        });
+      }),
       chatFactory: () => chat,
       buildConfig: (ctx, tools) =>
         buildChatConfig(ctx, tools as unknown as CleanTool[], planManager.planModeEnabled, mentionContexts),
@@ -422,6 +451,18 @@ export class AIChatController {
           break;
         case 'navigation':
           logger.info('Orchestrator', `Navigation detected (${event.toolName})`);
+          break;
+        case 'subagent_started':
+          logger.info('Orchestrator', `Subagent started: ${event.task}`);
+          convCtrl.addAndRender('tool_call', '', { tool: 'delegate_task', args: { task: event.task } }, pinnedConv);
+          break;
+        case 'subagent_completed':
+          logger.info('Orchestrator', `Subagent ${event.subagentId} completed (${event.stepsCompleted} steps)`);
+          convCtrl.addAndRender('tool_result', event.text, { tool: 'delegate_task' }, pinnedConv);
+          break;
+        case 'subagent_failed':
+          logger.warn('Orchestrator', `Subagent ${event.subagentId} failed: ${event.error}`);
+          convCtrl.addAndRender('tool_error', event.error, { tool: 'delegate_task' }, pinnedConv);
           break;
       }
     });

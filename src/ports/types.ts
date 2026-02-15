@@ -85,6 +85,7 @@ export interface SubagentTask {
   readonly context?: AgentContext;
   readonly maxSteps?: number;
   readonly timeoutMs?: number;
+  readonly depth?: number;
 }
 
 /** Result from a subagent execution */
@@ -129,6 +130,9 @@ export interface AgentEventMap {
   readonly 'tool:error': { readonly name: string; readonly error: string };
   readonly 'ai:response': { readonly text: string; readonly reasoning?: string };
   readonly 'navigation': { readonly toolName: string };
+  readonly 'subagent:started': { readonly subagentId: string; readonly task: string };
+  readonly 'subagent:completed': { readonly subagentId: string; readonly text: string; readonly stepsCompleted: number };
+  readonly 'subagent:failed': { readonly subagentId: string; readonly error: string };
   readonly 'timeout': undefined;
   readonly 'max_iterations': undefined;
 }
@@ -142,6 +146,9 @@ export type OrchestratorEvent =
   | { readonly type: 'tool_error'; readonly name: string; readonly error: string }
   | { readonly type: 'ai_response'; readonly text: string; readonly reasoning?: string }
   | { readonly type: 'navigation'; readonly toolName: string }
+  | { readonly type: 'subagent_started'; readonly subagentId: string; readonly task: string }
+  | { readonly type: 'subagent_completed'; readonly subagentId: string; readonly text: string; readonly stepsCompleted: number }
+  | { readonly type: 'subagent_failed'; readonly subagentId: string; readonly error: string }
   | { readonly type: 'timeout' }
   | { readonly type: 'max_iterations' };
 
