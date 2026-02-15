@@ -26,9 +26,11 @@ function isLitContainer(el: HTMLElement): el is ChatContainerElement {
 export function clearChat(container: HTMLElement): void {
   if (isLitContainer(container)) {
     container.clear();
-  } else {
-    container.innerHTML = '';
   }
+  // Always remove DOM children: appendBubble uses appendChild which
+  // adds nodes outside Lit's template, so Lit's clear() alone won't
+  // remove them from Light DOM.
+  container.innerHTML = '';
 }
 
 /** Add a bubble to the chat UI and scroll */

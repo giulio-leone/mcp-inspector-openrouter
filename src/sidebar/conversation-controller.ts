@@ -38,6 +38,7 @@ export class ConversationController {
 
   switchToConversation(convId: string): void {
     this.state.currentConvId = convId;
+    this.state.trace = [];
     const msgs = Store.getMessages(this.state.currentSite, convId);
     ChatUI.renderConversationWithActions(this.chatContainer, msgs, {
       onEdit: (i, content) => this.editMessage(i, content),
@@ -68,6 +69,7 @@ export class ConversationController {
     Store.deleteConversation(this.state.currentSite, this.state.currentConvId);
     this.state.currentConvId = null;
     this.state.chat = undefined;
+    this.state.trace = [];
     ChatUI.clearChat(this.chatContainer);
     const convs = Store.listConversations(this.state.currentSite);
     if (convs.length > 0) {
