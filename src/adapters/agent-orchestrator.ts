@@ -33,13 +33,13 @@ import type { ToolResponse, ParsedFunctionCall, PageContext, CleanTool, ContentP
 import { isNavigationTool, waitForPageAndRescan } from '../sidebar/tool-loop';
 import { logger } from '../sidebar/debug-logger';
 
-const DEFAULT_MAX_ITERATIONS = 10;
-const DEFAULT_LOOP_TIMEOUT_MS = 60_000;
+const DEFAULT_MAX_ITERATIONS = 0;
+const DEFAULT_LOOP_TIMEOUT_MS = 0;
 
 export interface OrchestratorLimits {
-  /** Maximum tool-loop iterations per run (default: 10). */
+  /** Maximum tool-loop iterations per run (0 = unlimited, default: 0). */
   readonly maxIterations?: number;
-  /** Global loop timeout in ms (default: 60 000). */
+  /** Global loop timeout in ms (0 = unlimited, default: 0). */
   readonly loopTimeoutMs?: number;
 }
 
@@ -154,10 +154,10 @@ export class AgentOrchestrator implements IAgentPort {
     const loopStart = performance.now();
     let iteration = 0;
 
-    while (iteration < maxIterations) {
+    while (maxIterations === 0 || iteration < maxIterations) {
       iteration++;
 
-      if (performance.now() - loopStart > loopTimeoutMs) {
+      if (loopTimeoutMs > 0 && performance.now() - loopStart > loopTimeoutMs) {
         logger.warn('Orchestrator', `Tool loop timed out after ${loopTimeoutMs}ms`);
         this.eventBus.emit('timeout');
         break;

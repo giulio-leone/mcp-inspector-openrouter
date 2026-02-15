@@ -264,14 +264,18 @@ describe('AgentOrchestrator', () => {
     expect(mocks.buildConfig).toHaveBeenCalledTimes(2);
   });
 
-  // 14. Stops after MAX_ITERATIONS (10)
-  it('stops after MAX_ITERATIONS', async () => {
+  // 14. Stops after explicit maxIterations
+  it('stops after explicit maxIterations', async () => {
+    const orch = new AgentOrchestrator({
+      ...makeDeps(mocks),
+      limits: { maxIterations: 10 },
+    });
     // Always return function calls so the loop never exits early
     mocks.mockChat.sendMessage.mockResolvedValue({
       functionCalls: [{ id: 'fc', name: 't', args: {} }],
     });
 
-    const result = await orchestrator.run('go', makeContext());
+    const result = await orch.run('go', makeContext());
     // 1 initial call + 10 iteration calls = 11 total
     expect(mocks.mockChat.sendMessage).toHaveBeenCalledTimes(11);
     expect(result.stepsCompleted).toBe(10);
@@ -279,11 +283,15 @@ describe('AgentOrchestrator', () => {
 
   // 15. Returns warning message at max iterations
   it('returns warning message at max iterations', async () => {
+    const orch = new AgentOrchestrator({
+      ...makeDeps(mocks),
+      limits: { maxIterations: 5 },
+    });
     mocks.mockChat.sendMessage.mockResolvedValue({
       functionCalls: [{ id: 'fc', name: 't', args: {} }],
     });
 
-    const result = await orchestrator.run('go', makeContext());
+    const result = await orch.run('go', makeContext());
     expect(result.text).toBe('⚠️ Reached maximum tool iterations.');
   });
 
@@ -334,6 +342,10 @@ describe('AgentOrchestrator', () => {
 
   // Timeout test using performance.now spy
   it('breaks loop on timeout', async () => {
+    const orch = new AgentOrchestrator({
+      ...makeDeps(mocks),
+      limits: { loopTimeoutMs: 60_000 },
+    });
     let callCount = 0;
     const spy = vi.spyOn(performance, 'now');
     // First call is before the loop; subsequent calls inside the loop exceed timeout
@@ -347,7 +359,7 @@ describe('AgentOrchestrator', () => {
       .mockResolvedValueOnce({ functionCalls: [{ id: 'fc1', name: 't', args: {} }] })
       .mockResolvedValueOnce({ functionCalls: [{ id: 'fc2', name: 't', args: {} }] });
 
-    const result = await orchestrator.run('go', makeContext());
+    const result = await orch.run('go', makeContext());
     // Should have broken out due to timeout after first iteration's check
     expect(result.text).toContain('Reached maximum tool iterations');
     spy.mockRestore();
@@ -430,6 +442,10 @@ describe('AgentOrchestrator', () => {
     });
 
     it('emits timeout event', async () => {
+      const orch = new AgentOrchestrator({
+        ...makeDeps(mocks),
+        limits: { loopTimeoutMs: 60_000 },
+      });
       let callCount = 0;
       const spy = vi.spyOn(performance, 'now');
       spy.mockImplementation(() => (++callCount <= 1 ? 0 : 70_000));
@@ -439,25 +455,27 @@ describe('AgentOrchestrator', () => {
         .mockResolvedValueOnce({ functionCalls: [{ id: 'fc2', name: 't', args: {} }] });
 
       const events: any[] = [];
-      orchestrator.onEvent((e) => events.push(e));
+      orch.onEvent((e) => events.push(e));
 
-      await orchestrator.run('go', makeContext());
+      await orch.run('go', makeContext());
 
       expect(events).toContainEqual({ type: 'timeout' });
       spy.mockRestore();
     });
 
     it('emits max_iterations event', async () => {
-      for (let i = 0; i < 11; i++) {
-        mocks.mockChat.sendMessage.mockResolvedValueOnce({
-          functionCalls: [{ id: `fc${i}`, name: 'tool', args: {} }],
-        });
-      }
+      const orch = new AgentOrchestrator({
+        ...makeDeps(mocks),
+        limits: { maxIterations: 5 },
+      });
+      mocks.mockChat.sendMessage.mockResolvedValue({
+        functionCalls: [{ id: 'fc', name: 'tool', args: {} }],
+      });
 
       const events: any[] = [];
-      orchestrator.onEvent((e) => events.push(e));
+      orch.onEvent((e) => events.push(e));
 
-      await orchestrator.run('go', makeContext());
+      await orch.run('go', makeContext());
 
       expect(events).toContainEqual({ type: 'max_iterations' });
     });
@@ -554,15 +572,22 @@ describe('AgentOrchestrator', () => {
       spy.mockRestore();
     });
 
-    it('uses defaults when limits not provided', async () => {
-      mocks.mockChat.sendMessage.mockResolvedValue({
-        functionCalls: [{ id: 'fc', name: 't', args: {} }],
+    it('defaults to unlimited iterations (0)', async () => {
+      // With default limits (0 = unlimited), loop runs until AI stops returning tool calls
+      let callCount = 0;
+      mocks.mockChat.sendMessage.mockImplementation(async () => {
+        callCount++;
+        // Initial call is callCount=1, then iterations count from 2
+        if (callCount <= 21) {
+          return { functionCalls: [{ id: `fc${callCount}`, name: 't', args: {} }] };
+        }
+        return { text: 'Done after many iterations' };
       });
 
       const result = await orchestrator.run('go', makeContext());
-      // Default MAX_ITERATIONS = 10 → 1 initial + 10 = 11 calls
-      expect(mocks.mockChat.sendMessage).toHaveBeenCalledTimes(11);
-      expect(result.stepsCompleted).toBe(10);
+      // Should have gone past old default of 10 — proving unlimited works
+      expect(result.stepsCompleted).toBeGreaterThan(10);
+      expect(result.text).toBe('Done after many iterations');
     });
   });
 });

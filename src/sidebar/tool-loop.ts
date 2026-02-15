@@ -119,6 +119,10 @@ export interface ToolLoopParams {
   addMessage: (role: MessageRole, content: string, meta?: Record<string, unknown>) => void;
   getConfig: (ctx: PageContext | null) => ChatConfig;
   onToolsUpdated: (tools: CleanTool[]) => void;
+  /** Max tool-loop iterations (0 = unlimited, default: 0). */
+  maxIterations?: number;
+  /** Tool-loop timeout in ms (0 = unlimited, default: 0). */
+  loopTimeoutMs?: number;
 }
 
 export interface ToolLoopResult {
@@ -144,17 +148,17 @@ export async function executeToolLoop(params: ToolLoopParams): Promise<ToolLoopR
 
   let { initialResult: currentResult, pageContext, currentTools } = params;
   let finalResponseGiven = false;
-  const MAX_TOOL_ITERATIONS = 10;
-  const TOOL_LOOP_TIMEOUT_MS = 60_000;
+  const maxIterations = params.maxIterations ?? 0;
+  const loopTimeoutMs = params.loopTimeoutMs ?? 0;
   const toolLoopStart = performance.now();
   let iteration = 0;
 
-  while (!finalResponseGiven && iteration < MAX_TOOL_ITERATIONS) {
+  while (!finalResponseGiven && (maxIterations === 0 || iteration < maxIterations)) {
     iteration++;
 
-    if (performance.now() - toolLoopStart > TOOL_LOOP_TIMEOUT_MS) {
-      addMessage('error', '⚠️ Tool execution loop timed out after 60s. Stopping.');
-      console.warn('[Sidebar] Tool loop timed out after 60s');
+    if (loopTimeoutMs > 0 && performance.now() - toolLoopStart > loopTimeoutMs) {
+      addMessage('error', `⚠️ Tool execution loop timed out after ${loopTimeoutMs}ms. Stopping.`);
+      console.warn(`[Sidebar] Tool loop timed out after ${loopTimeoutMs}ms`);
       break;
     }
 
