@@ -489,5 +489,21 @@ describe('ToolManifestAdapter', () => {
       const manifest = adapter.updatePage('example.com', 'https://example.com/page', [badTool]);
       expect(manifest.tools[0].inputSchema).toEqual({ type: 'object', properties: {} });
     });
+
+    it('produces consistent hashes between updatePage and applyDiff with string schemas', () => {
+      const stringSchemaJson = '{"type":"object","properties":{"q":{"type":"string"}}}';
+      const t1 = tool('search', { inputSchema: stringSchemaJson });
+
+      const m1 = adapter.updatePage('s.com', 'https://s.com/page', [t1]);
+      const hash1 = m1.pages[Object.keys(m1.pages)[0]].hash;
+
+      // Reset and use applyDiff path
+      const adapter2 = new ToolManifestAdapter();
+      adapter2.updatePage('s.com', 'https://s.com/page', []);
+      const m2 = adapter2.applyDiff('s.com', 'https://s.com/page', [t1], []);
+      const hash2 = m2.pages[Object.keys(m2.pages)[0]].hash;
+
+      expect(hash1).toBe(hash2);
+    });
   });
 });

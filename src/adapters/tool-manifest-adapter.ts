@@ -17,18 +17,18 @@ import type {
 import type { CleanTool } from '../types';
 import { urlToPattern, hashTools } from './indexeddb-tool-cache-adapter';
 
+/** Parse a potentially stringified inputSchema into an object. */
+function parseSchema(schema: string | Record<string, unknown> | object): Record<string, unknown> {
+  if (typeof schema === 'string') {
+    try { return JSON.parse(schema) as Record<string, unknown>; }
+    catch { return { type: 'object', properties: {} }; }
+  }
+  return schema as Record<string, unknown>;
+}
+
 /** Convert a CleanTool to a ManifestTool with a single page pattern. */
 function toManifestTool(tool: CleanTool, pattern: string): ManifestTool {
-  let schema: Record<string, unknown>;
-  if (typeof tool.inputSchema === 'string') {
-    try {
-      schema = JSON.parse(tool.inputSchema) as Record<string, unknown>;
-    } catch {
-      schema = { type: 'object', properties: {} };
-    }
-  } else {
-    schema = { ...tool.inputSchema };
-  }
+  const schema = parseSchema(tool.inputSchema);
 
   const annotations: Record<string, boolean> | undefined = tool.annotations
     ? { ...tool.annotations }
@@ -94,8 +94,12 @@ export class ToolManifestAdapter implements IToolManifestPort {
 
   updatePage(origin: string, url: string, tools: CleanTool[]): SiteToolManifest {
     const pattern = urlToPattern(url);
-    // Hash without confidence — manifest doesn't track confidence
-    const hash = hashTools(tools.map((t) => ({ ...t, confidence: 0 })));
+    // Normalize confidence and inputSchema for consistent hashing
+    const hash = hashTools(tools.map((t) => ({
+      ...t,
+      confidence: 0,
+      inputSchema: parseSchema(t.inputSchema) as unknown as typeof t.inputSchema,
+    })));
     const now = Date.now();
 
     const existing = this.manifests.get(origin);
