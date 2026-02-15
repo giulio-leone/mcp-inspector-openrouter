@@ -9,38 +9,23 @@ slug: /
 
 OneGenUI Deep Agents is a Chrome Extension that uses an AI agent orchestrator to automate browser interactions with full context awareness. It understands what's on the page — playing videos, form states, overlays, navigation — and acts accordingly.
 
+## What is OneGenUI Deep Agents?
+
+OneGenUI Deep Agents is a Chrome extension that brings AI-powered browser automation to your fingertips. It connects to AI models (via OpenRouter, Claude, and others) and executes browser actions on your behalf — clicking buttons, filling forms, navigating pages, and managing multi-tab workflows — all while maintaining real-time awareness of the page state.
+
+The extension is built on a **hexagonal architecture** (ports & adapters) that cleanly separates domain logic from infrastructure, making it easy to swap AI providers, add platform-specific adapters, or extend with new capabilities.
+
 ## Key Features
 
-- **🏗️ Hexagonal Architecture** — 5 stable ports isolate domain from infrastructure. Swap AI engines or tool implementations without touching business logic.
-- **🔄 LiveState Context** — Real-time awareness of media playback, form completion, overlays, loading indicators, and navigation state.
-- **📋 Structured Planning** — AI creates step-by-step plans with progress tracking, failure handling, and status updates.
-- **🤖 Subagent Delegation** — Complex tasks are split across child agents with configurable depth, concurrency, and timeout limits.
-- **📑 Multi-Tab Sessions** — Cross-tab context with `@mention` syntax for referencing data between tabs.
-- **🎬 Media Control** — YouTube, Vimeo, Twitch, Dailymotion, Spotify, SoundCloud with state-aware playback control.
-- **📱 Social Platform Support** — Instagram, Twitter/X, Facebook, LinkedIn, TikTok, Reddit action detection.
-- **🛒 E-commerce** — Product pages, add-to-cart, quantity management via generic selectors.
-- **🔐 Security Approval Gate** — Tiered security for tool execution: auto-approve safe tools, prompt for sensitive ones.
+- **🏗️ Hexagonal Architecture** — 13+ ports isolate domain from infrastructure
+- **🔄 LiveState Context** — Real-time awareness of media, forms, overlays, and navigation
+- **📋 Structured Planning** — Step-by-step plans with progress tracking and failure handling
+- **🤖 Subagent Delegation** — Parallel child agents with depth/concurrency limits
+- **📑 Multi-Tab Sessions** — Cross-tab context with `@mention` syntax
+- **💾 WebMCP Cache** — Persistent IndexedDB caching of tool manifests
+- **🔐 Approval Gate** — Tiered security for tool execution
 
-## Architecture at a Glance
-
-```
-┌─────────────────────────────────────────────┐
-│              AI Chat Controller             │
-├─────────────────────────────────────────────┤
-│            AgentOrchestrator                │
-│  ┌─────────┬──────────┬──────────┬────────┐ │
-│  │ IAgent  │  ITool   │IPlanning │IContext│ │
-│  │  Port   │  Port    │  Port    │  Port  │ │
-│  └────┬────┴────┬─────┴────┬─────┴───┬────┘ │
-│       │         │          │         │      │
-│  Orchestr.  ChromeTool  Planning  Context   │
-│  Adapter    Adapter     Adapter   Adapter   │
-├─────────────────────────────────────────────┤
-│        Chrome Extension APIs                │
-└─────────────────────────────────────────────┘
-```
-
-## Quick Start
+## Installation
 
 ```bash
 git clone https://github.com/giulio-leone/mcp-inspector-openrouter.git
@@ -49,4 +34,18 @@ npm install
 npm run build
 ```
 
-Then load the `dist/` folder as an unpacked extension in Chrome.
+Then load the extension in Chrome:
+
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `dist/` folder
+
+## Quick Start
+
+1. Open the extension popup by clicking the OneGenUI icon in your toolbar
+2. Select an AI model (OpenRouter, Claude, etc.) in the settings
+3. Type a command like _"Click the sign-in button"_ or _"Fill out this form with my info"_
+4. Watch the agent plan and execute the steps in real time
+
+For a deeper understanding of the system, see the [Architecture Overview](./architecture/overview).

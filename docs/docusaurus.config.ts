@@ -4,18 +4,18 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'OneGenUI Deep Agents',
-  tagline: 'AI-powered browser assistant with hexagonal architecture',
+  tagline: 'AI-powered browser automation with hexagonal architecture',
   favicon: 'img/favicon.ico',
 
   future: {
     v4: true,
   },
 
-  url: 'https://giulio-leone.github.io',
-  baseUrl: '/mcp-inspector-openrouter/',
+  url: 'https://g97iulio1609.github.io',
+  baseUrl: '/onegenui-deep-agents/',
 
-  organizationName: 'giulio-leone',
-  projectName: 'mcp-inspector-openrouter',
+  organizationName: 'g97iulio1609',
+  projectName: 'onegenui-deep-agents',
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
@@ -64,25 +64,6 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Documentation',
-          items: [
-            { label: 'Getting Started', to: '/docs/getting-started' },
-            { label: 'Architecture', to: '/docs/architecture' },
-            { label: 'API Reference', to: '/docs/api/ports-overview' },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            {
-              label: 'GitHub',
-              href: 'https://github.com/giulio-leone/mcp-inspector-openrouter',
-            },
-          ],
-        },
-      ],
       copyright: `Copyright © ${new Date().getFullYear()} OneGenUI. Built with Docusaurus.`,
     },
     prism: {
