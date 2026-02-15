@@ -12,6 +12,9 @@ import type {
   ToolDiff,
 } from '../ports/tool-cache.port';
 import type { CleanTool } from '../types';
+import { urlToPattern } from 'onegenui-deep-agents';
+
+export { urlToPattern };
 
 const DB_NAME = 'webmcp-tool-cache';
 const DB_VERSION = 1;
@@ -20,7 +23,7 @@ const STORE_NAME = 'manifests';
 /** Default cache TTL: 24 hours */
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** Hash a tools array for quick diff comparison. */
+/** Hash a tools array for quick diff comparison (includes confidence). */
 export function hashTools(tools: readonly CleanTool[]): string {
   const keys = tools
     .map(
@@ -34,20 +37,6 @@ export function hashTools(tools: readonly CleanTool[]): string {
     h = ((h << 5) - h + s.charCodeAt(i)) | 0;
   }
   return h.toString(36);
-}
-
-/** Convert a concrete URL to a pattern for caching (strips query values). */
-export function urlToPattern(url: string): string {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.replace(/\/+$/, '') || '/';
-    if (!u.search) return path;
-    const params = new URLSearchParams(u.search);
-    const wildcarded = [...params.keys()].sort().map((k) => `${k}=*`);
-    return `${path}?${wildcarded.join('&')}`;
-  } catch {
-    return url;
-  }
 }
 
 /** Extract site origin from a URL. */
