@@ -20,12 +20,15 @@ const DEFAULT_MAX_DEPTH = 3;
 
 /** Convert a glob-like pattern to a RegExp */
 export function globToRegex(pattern: string): RegExp {
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\?]/g, '\\$&')
-    .replace(/\*\*/g, '⟨DOUBLESTAR⟩')
-    .replace(/\*/g, '[^/]*')
-    .replace(/⟨DOUBLESTAR⟩/g, '.*')
-    .replace(/(\.\*){2,}/g, '.*');
+  // Split on ** to handle it separately, avoiding sentinel collision
+  const parts = pattern.split('**');
+  const escaped = parts
+    .map((part) =>
+      part
+        .replace(/[.+^${}()|[\]\\?]/g, '\\$&')
+        .replace(/\*/g, '[^/]*'),
+    )
+    .join('.*');
   return new RegExp(`^${escaped}$`);
 }
 
