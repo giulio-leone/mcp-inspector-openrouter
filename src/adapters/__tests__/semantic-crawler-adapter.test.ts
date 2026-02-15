@@ -232,6 +232,7 @@ describe('SemanticCrawlerAdapter', () => {
         const html = pages[url];
         if (!html) throw new Error(`Not found: ${url}`);
         return {
+          ok: true,
           headers: { get: (h: string) => (h === 'content-type' ? 'text/html' : null) },
           text: async () => html,
         };
@@ -459,6 +460,7 @@ describe('SemanticCrawlerAdapter', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
+        ok: true,
         headers: { get: (h: string) => (h === 'content-type' ? 'application/json' : null) },
         text: async () => '{"data": true}',
       })),
@@ -470,6 +472,27 @@ describe('SemanticCrawlerAdapter', () => {
     });
 
     expect(result.pagesScanned).toBe(1);
+    expect(result.toolsDiscovered).toBe(0);
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it('skips HTTP error responses and records error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        headers: { get: () => 'text/html' },
+        text: async () => '<html><form><input name="q"/><button>Search</button></form></html>',
+      })),
+    );
+
+    const result = await crawler.crawl({
+      site: 'example.com',
+      entryPoints: ['https://example.com/missing'],
+    });
+
+    expect(result.errors).toContain('HTTP 404 for https://example.com/missing');
     expect(result.toolsDiscovered).toBe(0);
     expect(cache.put).not.toHaveBeenCalled();
   });

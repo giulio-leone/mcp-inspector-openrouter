@@ -249,6 +249,10 @@ export class SemanticCrawlerAdapter implements ICrawlerPort {
 
         try {
           const response = await fetch(item.url, { signal });
+          if (!response.ok) {
+            errors.push(`HTTP ${response.status} for ${item.url}`);
+            continue;
+          }
           const contentType = response.headers.get('content-type') ?? '';
           if (!contentType.includes('text/html')) continue;
 
