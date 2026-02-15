@@ -139,10 +139,10 @@ export class AgentOrchestrator implements IAgentPort {
     let tools = [...context.tools] as ToolDefinition[];
     const toolCallRecords: ToolCallRecord[] = [];
 
-    // Inject delegate_task tool when delegation adapter is wired
-    if (this.deps.delegation && !tools.some(t => t.name === 'delegate_task')) {
+    // Inject delegate_to_tab tool when delegation adapter is wired
+    if (this.deps.delegation && !tools.some(t => t.name === 'delegate_to_tab')) {
       tools.push({
-        name: 'delegate_task',
+        name: 'delegate_to_tab',
         description: 'Delegate a task to another browser tab based on its capabilities',
         parametersSchema: {
           type: 'object',
@@ -225,7 +225,7 @@ export class AgentOrchestrator implements IAgentPort {
         }
 
         // Cross-tab delegation via TabDelegationAdapter
-        if (fc.name === 'delegate_task' && this.deps.delegation) {
+        if (fc.name === 'delegate_to_tab' && this.deps.delegation) {
           const delegateArgs = fc.args as { required_skills: string[]; task: string };
           const matchedTab = this.deps.delegation.findTabForTask(delegateArgs.required_skills);
           if (!matchedTab) {
