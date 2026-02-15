@@ -183,21 +183,22 @@ export class IndexedDBToolCacheAdapter implements IToolCachePort {
   }
 
   async invalidate(site: string, url: string): Promise<void> {
-    const manifest = await this.getManifest(site);
-    if (!manifest) return;
-
     const pattern = urlToPattern(url);
-    if (!(pattern in manifest.pages)) return;
-
-    const pages = { ...manifest.pages };
-    delete pages[pattern];
-
-    const updated: SiteManifest = { ...manifest, version: manifest.version + 1, pages };
-
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).put(updated);
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(site);
+
+      getReq.onsuccess = (): void => {
+        const manifest = getReq.result as SiteManifest | undefined;
+        if (!manifest || !(pattern in manifest.pages)) return;
+
+        const pages = { ...manifest.pages };
+        delete pages[pattern];
+        store.put({ ...manifest, version: manifest.version + 1, pages });
+      };
+
       tx.oncomplete = (): void => { db.close(); resolve(); };
       tx.onerror = (): void => { db.close(); reject(tx.error); };
     });
