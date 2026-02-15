@@ -19,3 +19,4 @@ export { TabSessionAdapter } from './tab-session-adapter';
 export { NavigationPlanAdapter, resolveTemplate } from './navigation-plan-adapter';
 export { BackgroundTaskAdapter } from './background-task-adapter';
 export { CronSchedulerAdapter } from './cron-scheduler-adapter';
+export { IndexedDBToolCacheAdapter, urlToPattern, extractSite, hashTools } from './indexeddb-tool-cache-adapter';

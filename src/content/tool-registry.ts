@@ -1,6 +1,9 @@
 /**
  * ToolRegistry — owns scanner/executor registries, 3-tier tool
  * discovery, schema enrichment, DOM observation, and result caching.
+ *
+ * Supports an optional IToolCachePort for persistent cross-session
+ * caching of tool manifests per site (WebMCP cache layer).
  */
 
 import type {
@@ -14,6 +17,8 @@ import { ScannerRegistry } from './scanners';
 import { ExecutorRegistry } from './executors';
 import { mergeToolSets } from './merge';
 import { AIClassifier } from './ai-classifier';
+import type { IToolCachePort } from '../ports/tool-cache.port';
+import { extractSite } from '../adapters/indexeddb-tool-cache-adapter';
 
 const SCANNER_CACHE_TTL_MS = 2000;
 
@@ -29,13 +34,22 @@ export class ToolRegistry {
   private domObserver: MutationObserver | null = null;
   private domObserverDebounce: ReturnType<typeof setTimeout> | null = null;
 
-  // Scanner result cache
+  // Scanner result cache (in-memory, 2s TTL)
   private scannerCacheTime = 0;
   private scannerCacheResult: Tool[] | null = null;
 
+  /** Optional persistent tool cache (IndexedDB) */
+  private toolCache: IToolCachePort | null = null;
+  /** Track if a background diff is already running to avoid duplicates */
+  private diffInProgress = false;
+
   constructor() {
-    // Keep aiClassifier referenced so tree-shaking doesn't remove it
     void this.aiClassifier;
+  }
+
+  /** Inject a persistent tool cache adapter. */
+  setToolCache(cache: IToolCachePort): void {
+    this.toolCache = cache;
   }
 
   // ── Public API ──
@@ -45,6 +59,35 @@ export class ToolRegistry {
   }
 
   async listToolsAlwaysAugment(): Promise<CleanTool[]> {
+    const currentUrl = location.href;
+    const site = extractSite(currentUrl);
+
+    // ── Fast path: persistent cache hit ──
+    if (this.toolCache) {
+      try {
+        const cached = await this.toolCache.get(site, currentUrl);
+        if (cached && cached.length > 0) {
+          console.debug(`[WebMCP] Cache hit for ${site} (${cached.length} tools)`);
+          // Populate inferredToolsMap so tool execution routing works
+          // before background diff completes. Inferred tools need DOM
+          // elements for execution, so trigger a background diff that
+          // will run fullScan() and re-populate with live DOM refs.
+          this.inferredToolsMap.clear();
+          for (const t of cached) {
+            if (t._source === 'inferred') {
+              this.inferredToolsMap.set(t.name, t as unknown as Tool);
+            }
+          }
+          chrome.runtime.sendMessage({ tools: cached, url: currentUrl });
+          this.scheduleBackgroundDiff(site, currentUrl);
+          return cached as CleanTool[];
+        }
+      } catch (e) {
+        console.warn('[WebMCP] Cache read failed, falling back to scan:', e);
+      }
+    }
+
+    // ── Full scan path ──
     let nativeTools: Tool[] = [];
     let declarativeTools: Tool[] = [];
     let inferredTools: Tool[] = [];
@@ -130,7 +173,92 @@ export class ToolRegistry {
     );
 
     chrome.runtime.sendMessage({ tools: cleanTools, url: location.href });
+
+    // ── Persist to cache in background ──
+    if (this.toolCache) {
+      this.toolCache.put(site, currentUrl, cleanTools).catch((e) => {
+        console.warn('[WebMCP] Cache write failed:', e);
+      });
+    }
+
     return cleanTools;
+  }
+
+  // ── Background Diff ──
+
+  /**
+   * Schedules a background diff: scans DOM and compares with cached tools.
+   * If differences found, updates the cache and broadcasts updated tools.
+   */
+  private scheduleBackgroundDiff(site: string, url: string): void {
+    if (this.diffInProgress || !this.toolCache) return;
+    this.diffInProgress = true;
+
+    queueMicrotask(async () => {
+      try {
+        const liveTools = await this.fullScan();
+        const diff = await this.toolCache!.diff(site, url, liveTools);
+
+        const hasChanges = diff.added.length > 0 || diff.removed.length > 0 || diff.changed.length > 0;
+        if (hasChanges) {
+          console.debug(
+            `[WebMCP] Diff: +${diff.added.length} -${diff.removed.length} ~${diff.changed.length} =${diff.unchanged}`,
+          );
+          await this.toolCache!.applyDiff(site, url, diff);
+          chrome.runtime.sendMessage({ tools: liveTools, url });
+        }
+      } catch (e) {
+        console.warn('[WebMCP] Background diff failed:', e);
+      } finally {
+        this.diffInProgress = false;
+      }
+    });
+  }
+
+  /** Run full 3-tier scan and return clean tools (no caching side effects). */
+  private fullScan(): CleanTool[] {
+    let nativeTools: Tool[] = [];
+    let declarativeTools: Tool[] = [];
+    let inferredTools: Tool[] = [];
+
+    if (navigator.modelContextTesting) {
+      try {
+        const raw = navigator.modelContextTesting.listTools() || [];
+        nativeTools = this.enrichToolSchemas(raw as Tool[]);
+      } catch { /* ignore */ }
+    }
+
+    const declForms = document.querySelectorAll('form[toolname]');
+    if (declForms.length > 0) {
+      declarativeTools = [...declForms].map((f) => {
+        const form = f as HTMLFormElement;
+        return {
+          name: form.getAttribute('toolname') ?? '',
+          description: form.getAttribute('tooldescription') ?? '',
+          inputSchema: ToolRegistry.extractFormSchema(form),
+        } as Tool;
+      });
+      declarativeTools = this.enrichToolSchemas(declarativeTools);
+    }
+
+    inferredTools = this.scannerRegistry.scanAll();
+
+    this.inferredToolsMap.clear();
+    for (const t of inferredTools) this.inferredToolsMap.set(t.name, t);
+
+    let tools = mergeToolSets(nativeTools, declarativeTools, inferredTools);
+    const dedupMap = new Map<string, Tool>();
+    for (const tool of tools) {
+      const existing = dedupMap.get(tool.name);
+      if (!existing || (tool.confidence ?? 0) > (existing.confidence ?? 0)) {
+        dedupMap.set(tool.name, tool);
+      }
+    }
+    tools = [...dedupMap.values()]
+      .filter((t) => (t.confidence ?? 1) >= 0.3)
+      .sort((a, b) => (a.category ?? '').localeCompare(b.category ?? ''));
+
+    return tools.map(({ _el, _form, _schemaAction, ...rest }) => rest);
   }
 
   // ── DOM Observer ──

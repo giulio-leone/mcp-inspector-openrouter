@@ -18,6 +18,7 @@ import {
   InteractiveStateProvider,
   VisibilityStateProvider,
 } from './live-state';
+import { IndexedDBToolCacheAdapter } from '../adapters/indexeddb-tool-cache-adapter';
 
 // ── Guard against duplicate injection ──
 if (window.__wmcp_loaded) {
@@ -27,6 +28,7 @@ if (window.__wmcp_loaded) {
   console.debug('[WebMCP] Content script injected');
 
   const registry = new ToolRegistry();
+  registry.setToolCache(new IndexedDBToolCacheAdapter());
 
   createMessageHandler(registry);
 
