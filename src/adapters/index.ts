@@ -20,3 +20,4 @@ export { NavigationPlanAdapter, resolveTemplate } from './navigation-plan-adapte
 export { BackgroundTaskAdapter } from './background-task-adapter';
 export { CronSchedulerAdapter } from './cron-scheduler-adapter';
 export { IndexedDBToolCacheAdapter, urlToPattern, extractSite, hashTools } from './indexeddb-tool-cache-adapter';
+export { SemanticCrawlerAdapter, extractToolsFromHTML, extractInternalLinks, matchesPatterns, globToRegex } from './semantic-crawler-adapter';

@@ -31,6 +31,12 @@ export type {
   ToolDiff,
 } from './tool-cache.port';
 export type {
+  ICrawlerPort,
+  CrawlTarget,
+  CrawlProgress,
+  CrawlResult,
+} from './crawler.port';
+export type {
   INavigationPlanPort,
   NavigationStepType,
   StepErrorStrategy,
