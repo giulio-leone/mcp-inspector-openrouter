@@ -200,6 +200,11 @@ describe('AgentOrchestrator — Integration Tests', () => {
       await orchestrator.run('go', makeContext());
 
       expect(mocks.contextManager.processToolResult).toHaveBeenCalledWith('fetch', largeData);
+      // Verify the offloaded reference (not original data) is sent to AI
+      const toolResponse = mocks.mockChat.sendMessage.mock.calls[1][0].message;
+      const responseContent = JSON.stringify(toolResponse);
+      expect(responseContent).toContain('REFERENCE_001');
+      expect(responseContent).not.toContain(largeData);
     });
 
     it('does not offload non-string results', async () => {
@@ -543,6 +548,27 @@ describe('AgentOrchestrator — Integration Tests', () => {
       expect(mocks.mockChat.sendMessage.mock.calls.length).toBeLessThanOrEqual(7);
       expect(mocks.mockChat.sendMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
       spy.mockRestore();
+    });
+
+    it('respects maxIterations cap and emits max_iterations event', async () => {
+      const orch = new AgentOrchestrator({
+        ...makeDeps(mocks),
+        limits: { maxIterations: 3, loopTimeoutMs: 0 },
+      });
+
+      mocks.mockChat.sendMessage.mockResolvedValue({
+        functionCalls: [{ id: 'fc', name: 't', args: {} }],
+      });
+
+      const events: any[] = [];
+      orch.onEvent((e) => events.push(e));
+
+      const result = await orch.run('go', makeContext());
+
+      // 1 initial + 3 loop iterations = 4 sendMessage calls
+      expect(mocks.mockChat.sendMessage).toHaveBeenCalledTimes(4);
+      expect(result.text).toContain('maximum');
+      expect(events.some((e) => e.type === 'max_iterations')).toBe(true);
     });
   });
 
