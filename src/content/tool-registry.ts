@@ -68,6 +68,16 @@ export class ToolRegistry {
         const cached = await this.toolCache.get(site, currentUrl);
         if (cached && cached.length > 0) {
           console.debug(`[WebMCP] Cache hit for ${site} (${cached.length} tools)`);
+          // Populate inferredToolsMap so tool execution routing works
+          // before background diff completes. Inferred tools need DOM
+          // elements for execution, so trigger a background diff that
+          // will run fullScan() and re-populate with live DOM refs.
+          this.inferredToolsMap.clear();
+          for (const t of cached) {
+            if (t._source === 'inferred') {
+              this.inferredToolsMap.set(t.name, t as unknown as Tool);
+            }
+          }
           chrome.runtime.sendMessage({ tools: cached, url: currentUrl });
           this.scheduleBackgroundDiff(site, currentUrl);
           return cached as CleanTool[];

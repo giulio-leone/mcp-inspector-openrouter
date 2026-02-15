@@ -22,7 +22,12 @@ const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** Hash a tools array for quick diff comparison. */
 export function hashTools(tools: readonly CleanTool[]): string {
-  const keys = tools.map((t) => `${t.name}:${t.confidence ?? 0}`).sort();
+  const keys = tools
+    .map(
+      (t) =>
+        `${t.name}:${t.confidence ?? 0}:${t.description ?? ''}:${JSON.stringify(t.inputSchema ?? {})}`,
+    )
+    .sort();
   let h = 0;
   const s = keys.join('|');
   for (let i = 0; i < s.length; i++) {
@@ -92,18 +97,24 @@ export class IndexedDBToolCacheAdapter implements IToolCachePort {
     const hash = hashTools(tools);
     const now = Date.now();
 
-    const existing = await this.getManifest(site);
-    const manifest: SiteManifest = existing
-      ? { ...existing, version: existing.version + 1, pages: { ...existing.pages } }
-      : { site, version: 1, lastFullScan: now, pages: {} };
-
-    const mutablePages = manifest.pages as Record<string, CachedPage>;
-    mutablePages[pattern] = { pattern, tools, hash, scannedAt: now };
-
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).put(manifest);
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(site);
+
+      getReq.onsuccess = (): void => {
+        const existing = getReq.result as SiteManifest | undefined;
+        const manifest: SiteManifest = existing
+          ? { ...existing, version: existing.version + 1, pages: { ...existing.pages } }
+          : { site, version: 1, lastFullScan: now, pages: {} };
+
+        (manifest.pages as Record<string, CachedPage>)[pattern] = {
+          pattern, tools, hash, scannedAt: now,
+        };
+        store.put(manifest);
+      };
+
       tx.oncomplete = (): void => { db.close(); resolve(); };
       tx.onerror = (): void => { db.close(); reject(tx.error); };
     });

@@ -213,6 +213,26 @@ describe('hashTools', () => {
     expect(hashTools(a)).not.toBe(hashTools(b));
   });
 
+  it('different description produces different hash', () => {
+    const a = [{ ...tool('play'), description: 'Play video' }];
+    const b = [{ ...tool('play'), description: 'Play audio' }];
+    expect(hashTools(a)).not.toBe(hashTools(b));
+  });
+
+  it('different schema produces different hash', () => {
+    const a = [
+      {
+        ...tool('play'),
+        inputSchema: {
+          type: 'object' as const,
+          properties: { speed: { type: 'number' } },
+        },
+      },
+    ];
+    const b = [tool('play')];
+    expect(hashTools(a)).not.toBe(hashTools(b));
+  });
+
   it('empty array produces deterministic hash', () => {
     expect(hashTools([])).toBe(hashTools([]));
   });
