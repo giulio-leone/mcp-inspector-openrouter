@@ -59,7 +59,7 @@ export function extractInternalLinks(
     try {
       const resolved = new URL(href, baseUrl);
       // Same origin only
-      if (resolved.hostname !== base.hostname) continue;
+      if (resolved.origin !== base.origin) continue;
       // Strip hash
       resolved.hash = '';
       const canonical = resolved.href;
