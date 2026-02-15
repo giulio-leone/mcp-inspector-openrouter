@@ -108,6 +108,11 @@ describe('InstagramAdapter', () => {
     expect(adapter.getCurrentSection()).toBe('unknown');
   });
 
+  it('getCurrentSection returns "profile" for username starting with p', () => {
+    setLocation('https://www.instagram.com/peter/');
+    expect(adapter.getCurrentSection()).toBe('profile');
+  });
+
   // ── Feed: likePost ──
 
   it('likePost clicks the like button', async () => {

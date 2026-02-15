@@ -299,7 +299,7 @@ export class InstagramAdapter implements IInstagramPort {
     if (path.startsWith('/stories')) return 'stories';
     if (path === '/' || path === '') return 'feed';
     // Known non-profile single-segment paths
-    const nonProfilePrefixes = ['/p', '/reel', '/tv', '/accounts', '/nametag', '/settings'];
+    const nonProfilePrefixes = ['/p/', '/reel/', '/tv/', '/accounts/', '/nametag/', '/settings/'];
     if (nonProfilePrefixes.some((p) => path.startsWith(p))) return 'unknown';
     // Profile pages: /<username>/
     if (/^\/[^/]+\/?$/.test(path)) return 'profile';
