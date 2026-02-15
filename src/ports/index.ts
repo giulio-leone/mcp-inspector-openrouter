@@ -24,6 +24,7 @@ export type {
   CronEventMap,
   ScheduleOptions,
 } from './cron-scheduler.port';
+export type { IInstagramPort, InstagramSection } from './instagram.port';
 export type {
   IToolCachePort,
   SiteManifest,
