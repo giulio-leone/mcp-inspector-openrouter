@@ -106,6 +106,19 @@ describe('TabDelegationAdapter', () => {
       // First encountered with score > 0 wins; Map iteration is insertion-order
       expect(result?.tabId).toBe(2);
     });
+
+    it('excludes specified tabId from matching', () => {
+      // Tab 1 has 'video' but we exclude it — should find no other with 'playback'
+      const result = adapter.findTabForTask(['video', 'playback'], 1);
+      expect(result).toBeNull();
+    });
+
+    it('falls back to second-best when best tab is excluded', () => {
+      adapter.registerTab(10, 'https://vimeo.com', 'Vimeo', ['video', 'streaming']);
+      // Tab 1 is best for 'video' but excluded — tab 10 is next
+      const result = adapter.findTabForTask(['video'], 1);
+      expect(result?.tabId).toBe(10);
+    });
   });
 
   // ── delegate ──

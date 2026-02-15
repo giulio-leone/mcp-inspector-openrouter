@@ -24,13 +24,14 @@ export class TabDelegationAdapter implements ITabDelegationPort {
    * Scores each registered tab by the fraction of requiredSkills it covers.
    * Returns the tab with the highest overlap, or null if none match.
    */
-  findTabForTask(requiredSkills: string[]): TabAgent | null {
+  findTabForTask(requiredSkills: string[], excludeTabId?: number): TabAgent | null {
     if (requiredSkills.length === 0) return null;
 
     let best: TabAgent | null = null;
     let bestScore = 0;
 
     for (const agent of this.tabs.values()) {
+      if (agent.tabId === excludeTabId) continue;
       const overlap = requiredSkills.filter(s => agent.skills.includes(s)).length;
       const score = overlap / requiredSkills.length;
       if (score > bestScore) {

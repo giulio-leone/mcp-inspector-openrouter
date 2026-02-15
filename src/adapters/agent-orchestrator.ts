@@ -225,9 +225,9 @@ export class AgentOrchestrator implements IAgentPort {
         }
 
         // Cross-tab delegation via TabDelegationAdapter
-        if (fc.name === 'delegate_to_tab' && this.deps.delegation) {
+                if (fc.name === 'delegate_to_tab' && this.deps.delegation) {
           const delegateArgs = fc.args as { required_skills: string[]; task: string };
-          const matchedTab = this.deps.delegation.findTabForTask(delegateArgs.required_skills);
+          const matchedTab = this.deps.delegation.findTabForTask(delegateArgs.required_skills, target.tabId);
           if (!matchedTab) {
             toolResponses.push(this.toToolResponse(fc, {
               error: `No tab found with skills: ${delegateArgs.required_skills.join(', ')}`,

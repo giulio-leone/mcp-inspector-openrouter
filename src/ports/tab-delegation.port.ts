@@ -23,7 +23,7 @@ export interface TabDelegationResult {
 export interface ITabDelegationPort {
   registerTab(tabId: number, url: string, title: string, skills: string[]): void;
   unregisterTab(tabId: number): void;
-  findTabForTask(requiredSkills: string[]): TabAgent | null;
+  findTabForTask(requiredSkills: string[], excludeTabId?: number): TabAgent | null;
   delegate(
     sourceTabId: number,
     targetTabId: number,
