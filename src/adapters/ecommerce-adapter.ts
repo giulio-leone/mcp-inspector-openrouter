@@ -192,7 +192,7 @@ export class EcommerceAdapter implements IEcommercePort {
       name: nameEl.textContent?.trim() ?? '',
       price: priceText,
       currency: currencyMatch?.[1] ?? '',
-      inStock: outOfStockEl === null && inStockEl !== null,
+      inStock: outOfStockEl === null,
       quantity: qtyInput ? parseInt(qtyInput.value, 10) || 1 : undefined,
       variants: variants.length > 0 ? variants : undefined,
     };
@@ -219,6 +219,9 @@ export class EcommerceAdapter implements IEcommercePort {
     const select = queryFirst<HTMLSelectElement>(VARIANT_SELECTORS[platform]);
     if (!select) throw new Error(`Variant selector not found (platform: ${platform})`);
     select.value = safe;
+    if (select.value !== safe) {
+      throw new Error(`Variant "${variant}" not found in available options`);
+    }
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
@@ -380,8 +383,7 @@ export class EcommerceAdapter implements IEcommercePort {
       }
     }
 
-    // Fallback: use first candidate
-    sortSelect.value = candidates[0];
-    sortSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    // No matching sort option found
+    throw new Error(`Sort option "${by}" not available`);
   }
 }

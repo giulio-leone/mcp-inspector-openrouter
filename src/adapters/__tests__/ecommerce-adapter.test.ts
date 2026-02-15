@@ -165,11 +165,6 @@ describe('EcommerceAdapter', () => {
       price.textContent = '$29.99';
       document.body.appendChild(price);
 
-      const stock = document.createElement('span');
-      stock.className = 'in-stock';
-      stock.textContent = 'In Stock';
-      document.body.appendChild(stock);
-
       const result = await adapter.getProductInfo();
       expect(result).not.toBeNull();
       expect(result!.name).toBe('Test Product');
@@ -469,7 +464,7 @@ describe('EcommerceAdapter', () => {
       expect(changeSpy).toHaveBeenCalled();
     });
 
-    it('falls back to first candidate when no option matches', async () => {
+    it('throws when no option matches any candidate', async () => {
       const select = document.createElement('select');
       select.setAttribute('name', 'sort_by');
       const opt = document.createElement('option');
@@ -477,13 +472,7 @@ describe('EcommerceAdapter', () => {
       select.appendChild(opt);
       document.body.appendChild(select);
 
-      const changeSpy = vi.fn();
-      select.addEventListener('change', changeSpy);
-
-      await adapter.sortProducts('newest');
-      // The select won't actually change to 'created-descending' since no option has that value,
-      // but the adapter does set it and dispatch the event
-      expect(changeSpy).toHaveBeenCalled();
+      await expect(adapter.sortProducts('newest')).rejects.toThrow('Sort option "newest" not available');
     });
   });
 });
