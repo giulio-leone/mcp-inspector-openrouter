@@ -166,7 +166,12 @@ function updateSessionIndicator(activeTabId?: number): void {
 (async (): Promise<void> => {
   try {
     const tab = await getCurrentTab();
-    if (!tab?.id || !isInjectableUrl(tab.url)) return;
+    if (!tab?.id || !isInjectableUrl(tab.url)) {
+      // Even on non-injectable pages, load any existing conversations
+      if (tab?.url) convCtrl.state.currentSite = Store.siteKey(tab.url);
+      convCtrl.loadConversations();
+      return;
+    }
     convCtrl.state.currentSite = Store.siteKey(tab.url!);
     tabSession.setTabContext(tab.id, { url: tab.url!, title: tab.title ?? '', extractedData: {} });
     updateSessionIndicator(tab.id);
@@ -180,18 +185,28 @@ function updateSessionIndicator(activeTabId?: number): void {
   }
 })();
 
-// Tab change listeners
-chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'loading') {
-    currentTools = [];
-    toolTable.tools = [];
-    toolTable.loading = true;
-    if (!convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''))) convCtrl.loadConversations();
-  }
-  if (changeInfo.status === 'complete' && tab.id && tab.url && isInjectableUrl(tab.url)) {
-    tabSession.setTabContext(tab.id, { url: tab.url, title: tab.title ?? '', extractedData: {} });
-    updateSessionIndicator(tab.id);
-  }
+// Tab change listeners — only react to the ACTIVE tab's updates
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  try {
+    // Ignore background tab updates to avoid resetting state
+    const activeTab = await getCurrentTab();
+    if (activeTab?.id !== tabId) return;
+
+    if (changeInfo.status === 'loading') {
+      currentTools = [];
+      toolTable.tools = [];
+      toolTable.loading = true;
+      if (!convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''))) convCtrl.loadConversations();
+    }
+    if (changeInfo.status === 'complete') {
+      if (tab.id && tab.url && isInjectableUrl(tab.url)) {
+        tabSession.setTabContext(tab.id, { url: tab.url, title: tab.title ?? '', extractedData: {} });
+        updateSessionIndicator(tab.id);
+      } else {
+        toolTable.loading = false;
+      }
+    }
+  } catch { toolTable.loading = false; }
 });
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   currentTools = [];
@@ -199,7 +214,14 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   toolTable.loading = true;
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    if (!isInjectableUrl(tab.url)) return;
+    if (!isInjectableUrl(tab.url)) {
+      toolTable.loading = false;
+      if (tab.url) {
+        const sameSite = convCtrl.handleSiteChange(Store.siteKey(tab.url));
+        if (!sameSite) convCtrl.loadConversations();
+      }
+      return;
+    }
     tabSession.setTabContext(activeInfo.tabId, { url: tab.url!, title: tab.title ?? '', extractedData: {} });
     updateSessionIndicator(activeInfo.tabId);
     const sameSite = convCtrl.handleSiteChange(Store.siteKey(tab.url ?? ''));
@@ -207,7 +229,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     await chrome.tabs.sendMessage(activeInfo.tabId, { action: 'LIST_TOOLS' });
     await chrome.tabs.sendMessage(activeInfo.tabId, { action: 'SET_LOCK_MODE', inputArgs: { locked: lockToggle.checked } });
     if (!sameSite) convCtrl.loadConversations();
-  } catch { /* tab may not be ready */ }
+  } catch { toolTable.loading = false; }
 });
 
 // Tool list message handler

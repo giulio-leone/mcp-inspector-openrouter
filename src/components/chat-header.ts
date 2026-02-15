@@ -50,6 +50,14 @@ export class ChatHeader extends BaseElement {
     this.showApiKeyHint = show;
   }
 
+  /** Sync the <select> value after Lit re-renders to avoid stale selectedIndex. */
+  override updated(): void {
+    const sel = this.querySelector('select');
+    if (sel && this.activeConversationId) {
+      sel.value = this.activeConversationId;
+    }
+  }
+
   // ── Render ──
 
   private _renderToolbar(): unknown {

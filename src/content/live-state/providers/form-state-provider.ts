@@ -87,9 +87,15 @@ function getRadioOptions(el: HTMLInputElement, root: Document | Element): string
 function buildFieldDetail(
   el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
   root: Document | Element,
+  index?: number,
 ): FormFieldDetail | null {
   if (el instanceof HTMLInputElement && el.type === 'hidden') return null;
-  const name = (el as HTMLInputElement).name || el.id || '';
+  const name = (el as HTMLInputElement).name
+    || el.id
+    || el.getAttribute('aria-label')
+    || (el as HTMLInputElement).placeholder
+    || el.getAttribute('data-testid')
+    || (index !== undefined ? `field-${index}` : '');
   if (!name) return null;
 
   const type = el instanceof HTMLSelectElement
@@ -133,7 +139,7 @@ export class FormStateProvider implements IStateProvider<FormLiveState> {
       let hasValidationErrors = false;
       const fields: FormFieldDetail[] = [];
 
-      fieldEls.forEach((field) => {
+      fieldEls.forEach((field, fieldIndex) => {
         const el = field as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
         formFieldElements.add(el);
 
@@ -158,7 +164,7 @@ export class FormStateProvider implements IStateProvider<FormLiveState> {
         }
 
         if (fields.length < MAX_FIELDS_PER_FORM) {
-          const detail = buildFieldDetail(el, root);
+          const detail = buildFieldDetail(el, root, fieldIndex);
           if (detail) fields.push(detail);
         }
       });
@@ -186,6 +192,7 @@ export class FormStateProvider implements IStateProvider<FormLiveState> {
     let orphanErrors = false;
     const orphanDirty: string[] = [];
 
+    let orphanIndex = 0;
     allFieldEls.forEach((field) => {
       if (formFieldElements.has(field)) return;
       const el = field as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -200,9 +207,10 @@ export class FormStateProvider implements IStateProvider<FormLiveState> {
       }
 
       if (orphanFields.length < MAX_ORPHAN_FIELDS) {
-        const detail = buildFieldDetail(el, root);
+        const detail = buildFieldDetail(el, root, orphanIndex);
         if (detail) orphanFields.push(detail);
       }
+      orphanIndex++;
     });
 
     if (orphanFields.length > 0) {

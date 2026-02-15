@@ -202,4 +202,174 @@ describe('FormStateProvider', () => {
     const results = provider.collect(doc);
     expect(results).toHaveLength(0);
   });
+
+  // ── Regression: field recognition improvements ──
+
+  describe('field recognition by attribute', () => {
+    it('recognizes field with only name attribute', () => {
+      const doc = makeDoc(`
+        <form>
+          <input name="username" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('username');
+    });
+
+    it('recognizes field with only id attribute', () => {
+      const doc = makeDoc(`
+        <form>
+          <input id="my-field" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('my-field');
+    });
+
+    it('recognizes field with only aria-label (regression)', () => {
+      const doc = makeDoc(`
+        <form>
+          <input aria-label="Search box" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('Search box');
+      expect(results[0].fields[0].label).toBe('Search box');
+    });
+
+    it('recognizes field with only placeholder (regression)', () => {
+      const doc = makeDoc(`
+        <form>
+          <input placeholder="Type here..." type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('Type here...');
+    });
+
+    it('recognizes field with only data-testid (regression)', () => {
+      const doc = makeDoc(`
+        <form>
+          <input data-testid="email-input" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('email-input');
+    });
+
+    it('assigns auto-generated name to field with no attributes (regression)', () => {
+      const doc = makeDoc(`
+        <form>
+          <input type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('field-0');
+    });
+  });
+
+  describe('hidden inputs are still filtered out', () => {
+    it('does not include hidden inputs regardless of attributes', () => {
+      const doc = makeDoc(`
+        <form>
+          <input type="hidden" name="token" value="abc" />
+          <input type="hidden" data-testid="secret" value="xyz" />
+          <input name="visible" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(1);
+      expect(results[0].fields[0].name).toBe('visible');
+    });
+  });
+
+  describe('form with mixed named and unnamed fields', () => {
+    it('recognizes all fields regardless of attribute presence', () => {
+      const doc = makeDoc(`
+        <form id="mixed">
+          <input name="named" type="text" />
+          <input id="has-id" type="text" />
+          <input aria-label="Has aria" type="text" />
+          <input placeholder="Has placeholder" type="text" />
+          <input data-testid="has-testid" type="text" />
+          <input type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields).toHaveLength(6);
+      expect(results[0].fields[0].name).toBe('named');
+      expect(results[0].fields[1].name).toBe('has-id');
+      expect(results[0].fields[2].name).toBe('Has aria');
+      expect(results[0].fields[3].name).toBe('Has placeholder');
+      expect(results[0].fields[4].name).toBe('has-testid');
+      expect(results[0].fields[5].name).toBe('field-5');
+    });
+  });
+
+  describe('orphan fields with no name/id (regression)', () => {
+    it('recognizes orphan fields with fallback naming', () => {
+      const doc = makeDoc(`
+        <input type="text" aria-label="Orphan aria" />
+        <input type="text" placeholder="Orphan placeholder" />
+        <input type="text" />
+      `);
+      const results = provider.collect(doc);
+      expect(results).toHaveLength(1);
+      expect(results[0].formId).toBe('orphan');
+      expect(results[0].fields).toHaveLength(3);
+      expect(results[0].fields[0].name).toBe('Orphan aria');
+      expect(results[0].fields[1].name).toBe('Orphan placeholder');
+      expect(results[0].fields[2].name).toBe('field-2');
+    });
+  });
+
+  describe('field label derivation priority', () => {
+    it('prefers aria-label over label[for]', () => {
+      const doc = makeDoc(`
+        <form>
+          <label for="f1">Label Text</label>
+          <input id="f1" name="f1" aria-label="Aria Text" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields[0].label).toBe('Aria Text');
+    });
+
+    it('prefers label[for] over placeholder', () => {
+      const doc = makeDoc(`
+        <form>
+          <label for="f2">Label Text</label>
+          <input id="f2" name="f2" placeholder="Placeholder Text" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields[0].label).toBe('Label Text');
+    });
+
+    it('prefers placeholder over name', () => {
+      const doc = makeDoc(`
+        <form>
+          <input name="field_name" placeholder="Placeholder Text" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields[0].label).toBe('Placeholder Text');
+    });
+
+    it('falls back to name when no other label source', () => {
+      const doc = makeDoc(`
+        <form>
+          <input name="field_name" type="text" />
+        </form>
+      `);
+      const results = provider.collect(doc);
+      expect(results[0].fields[0].label).toBe('field_name');
+    });
+  });
 });
