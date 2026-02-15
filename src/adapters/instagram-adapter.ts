@@ -7,7 +7,8 @@ import type { IInstagramPort, InstagramSection } from '../ports/instagram.port';
 
 /** Check whether the current page is Instagram */
 export function isInstagram(): boolean {
-  return location.hostname.includes('instagram.com');
+  const h = location.hostname;
+  return h === 'instagram.com' || h.endsWith('.instagram.com');
 }
 
 /**
@@ -52,10 +53,11 @@ export class InstagramAdapter implements IInstagramPort {
   // ── Stories ──
 
   async viewStory(username: string): Promise<void> {
+    const safe = CSS.escape(username);
     const selectors = [
-      `[role="button"] img[alt*="${username}" i]`,
-      `canvas[aria-label*="${username}" i]`,
-      `[aria-label*="story" i][aria-label*="${username}" i]`,
+      `[role="button"] img[alt*="${safe}" i]`,
+      `canvas[aria-label*="${safe}" i]`,
+      `[aria-label*="story" i][aria-label*="${safe}" i]`,
     ];
     clickElement(selectors, `story for @${username}`);
     await sleep(300);
@@ -93,7 +95,7 @@ export class InstagramAdapter implements IInstagramPort {
 
   async likePost(): Promise<void> {
     clickElement(
-      ['[aria-label*="Like" i]:not([aria-label*="Unlike" i])', 'svg[aria-label*="Like" i]'],
+      ['[aria-label*="Like" i]:not([aria-label*="Unlike" i])', 'svg[aria-label*="Like" i]:not([aria-label*="Unlike" i])'],
       'like button',
     );
   }
@@ -104,7 +106,7 @@ export class InstagramAdapter implements IInstagramPort {
 
   async savePost(): Promise<void> {
     clickElement(
-      ['[aria-label*="Save" i]:not([aria-label*="Unsave" i])', 'svg[aria-label*="Save" i]'],
+      ['[aria-label*="Save" i]:not([aria-label*="Unsave" i])', 'svg[aria-label*="Save" i]:not([aria-label*="Unsave" i])'],
       'save button',
     );
   }
@@ -153,7 +155,7 @@ export class InstagramAdapter implements IInstagramPort {
 
   async likeReel(): Promise<void> {
     clickElement(
-      ['[aria-label*="Like" i]:not([aria-label*="Unlike" i])', 'svg[aria-label*="Like" i]'],
+      ['[aria-label*="Like" i]:not([aria-label*="Unlike" i])', 'svg[aria-label*="Like" i]:not([aria-label*="Unlike" i])'],
       'reel like button',
     );
   }

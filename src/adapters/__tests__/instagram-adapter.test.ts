@@ -51,6 +51,15 @@ describe('InstagramAdapter', () => {
     expect(isInstagram()).toBe(false);
   });
 
+  it('isInstagram() rejects spoofed domains containing instagram.com', () => {
+    setLocation('https://notinstagram.com/');
+    expect(isInstagram()).toBe(false);
+    setLocation('https://evil-instagram.com/');
+    expect(isInstagram()).toBe(false);
+    setLocation('https://instagram.com.evil.com/');
+    expect(isInstagram()).toBe(false);
+  });
+
   it('isOnInstagram() delegates to isInstagram utility', () => {
     setLocation('https://www.instagram.com/explore/');
     expect(adapter.isOnInstagram()).toBe(true);
