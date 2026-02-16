@@ -8,7 +8,7 @@ describe('escapeHtml', () => {
 
   it('escapes angle brackets', () => {
     expect(escapeHtml('<script>alert("xss")</script>')).toBe(
-      '&lt;script&gt;alert("xss")&lt;/script&gt;',
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
     );
   });
 
@@ -18,6 +18,20 @@ describe('escapeHtml', () => {
 
   it('handles multiple special chars together', () => {
     expect(escapeHtml('a < b & c > d')).toBe('a &lt; b &amp; c &gt; d');
+  });
+
+  it('escapes double quotes to &quot;', () => {
+    expect(escapeHtml('"hello"')).toBe('&quot;hello&quot;');
+  });
+
+  it('escapes single quotes to &#39;', () => {
+    expect(escapeHtml("it's")).toBe('it&#39;s');
+  });
+
+  it('escapes combined XSS payload', () => {
+    expect(escapeHtml('<img src="x" onerror="alert(1)">')).toBe(
+      '&lt;img src=&quot;x&quot; onerror=&quot;alert(1)&quot;&gt;',
+    );
   });
 });
 
@@ -116,7 +130,7 @@ describe('formatAIText', () => {
     const result = formatAIText('```js\nconsole.log("hi")\n```');
     expect(result).toContain('<pre class="md-codeblock">');
     expect(result).toContain('<code class="lang-js">');
-    expect(result).toContain('console.log("hi")');
+    expect(result).toContain('console.log(&quot;hi&quot;)');
   });
 
   it('renders fenced code block without language', () => {
