@@ -39,12 +39,20 @@ Clients communicate with the WebMCP server via `CustomEvent` dispatched on `docu
 ### Request
 
 ```typescript
+// Full site manifest
+document.dispatchEvent(new CustomEvent('wmcp-request', {
+  detail: {}   // omit url for complete manifest
+}));
+
+// Page-specific tools
 document.dispatchEvent(new CustomEvent('wmcp-request', {
   detail: {
-    url: 'https://example.com'   // optional URL context
+    url: '/products/123'   // returns only tools for this URL
   }
 }));
 ```
+
+When a `url` is provided, the server returns a filtered response with only tools available on that specific page (via `getToolsForUrl()`). When omitted, the full site manifest is returned.
 
 ### Response
 
@@ -65,7 +73,27 @@ Manifests are persisted to IndexedDB for instant availability on page load:
 - **Key**: site origin (e.g. `https://example.com`)
 - **Value**: full `SiteToolManifest` object
 
-On page load, the adapter restores the cached manifest from IndexedDB and injects it into the DOM before any new scan runs. Incremental diffs update both the in-memory manifest and the persisted copy.
+On page load, the adapter restores the cached manifest from IndexedDB and injects it into the DOM before any new scan runs. Incremental diffs update both the in-memory manifest and the persisted copy. Tools loaded from the persisted manifest are tagged with `_source: 'manifest'` to distinguish them from freshly scanned tools.
+
+## Tool Source Badges
+
+The Tools tab displays source badges for each discovered tool:
+
+| Badge | Source | Description |
+|-------|--------|-------------|
+| 🟢 Native | `native` | From site's native MCP API |
+| 🔵 Declarative | `declarative` | From HTML `data-*` attributes |
+| 🟡 Inferred | `inferred` | From DOM scanner inference |
+| 🟣 AI | `ai` | AI-refined tool definition |
+| 🟠 Manifest | `manifest` | Loaded from persisted JSON manifest |
+
+## Manifest Archive Export
+
+The Tools tab includes an **Export Manifest Archive** button that downloads the current site's manifest as a JSON file (`wmcp-manifest-{hostname}.json`). This enables:
+
+- Sharing tool definitions between team members
+- Importing manifests into external MCP servers
+- Auditing and versioning tool schemas
 
 ## Manifest Dashboard
 
