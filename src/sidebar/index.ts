@@ -363,10 +363,24 @@ toolTable.addEventListener('execute-tool', async (e): Promise<void> => {
 });
 
 function waitForPageLoad(tabId: number): Promise<void> {
-  return new Promise((resolve) => {
-    const listener = (id: number, info: chrome.tabs.TabChangeInfo): void => {
-      if (id === tabId && info.status === 'complete') { chrome.tabs.onUpdated.removeListener(listener); resolve(); }
+  const TIMEOUT_MS = 30_000;
+  return new Promise<void>((resolve, reject) => {
+    const cleanup = (): void => {
+      chrome.tabs.onUpdated.removeListener(updateListener);
+      chrome.tabs.onRemoved.removeListener(removeListener);
+      clearTimeout(timer);
     };
-    chrome.tabs.onUpdated.addListener(listener);
+    const updateListener = (id: number, info: chrome.tabs.TabChangeInfo): void => {
+      if (id === tabId && info.status === 'complete') { cleanup(); resolve(); }
+    };
+    const removeListener = (id: number): void => {
+      if (id === tabId) { cleanup(); resolve(); }
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('waitForPageLoad timed out'));
+    }, TIMEOUT_MS);
+    chrome.tabs.onUpdated.addListener(updateListener);
+    chrome.tabs.onRemoved.addListener(removeListener);
   });
 }

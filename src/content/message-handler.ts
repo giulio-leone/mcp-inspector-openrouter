@@ -22,7 +22,7 @@ export function createMessageHandler(registry: ToolRegistry): void {
     }
   });
 
-  // Pending confirmation queue: toolName → { resolve, reject, tool, args }
+  // Pending confirmation queue: executionId → { resolve, reject, tool, args, timeout }
   const pendingConfirmations = new Map<
     string,
     {
@@ -30,6 +30,7 @@ export function createMessageHandler(registry: ToolRegistry): void {
       reject: (e: Error) => void;
       tool: Tool;
       args: Record<string, unknown>;
+      timeout: ReturnType<typeof setTimeout>;
     }
   >();
 
@@ -96,27 +97,38 @@ export function createMessageHandler(registry: ToolRegistry): void {
         `[WebMCP] Execute INFERRED tool "${toolName}" with`,
         inputArgs,
       );
-      const parsedArgs: Record<string, unknown> =
-        typeof inputArgs === 'string'
+      let parsedArgs: Record<string, unknown>;
+      try {
+        parsedArgs = typeof inputArgs === 'string'
           ? JSON.parse(inputArgs)
           : inputArgs;
+      } catch {
+        reply({ error: 'Invalid JSON arguments' });
+        return true;
+      }
 
       const tier = getSecurityTier(inferredTool);
       const tierInfo = SECURITY_TIERS[tier];
 
       if (!tierInfo.autoExecute && !yoloMode) {
+        const execId = `${toolName}_${Date.now()}`;
         const promise = new Promise<unknown>((resolve, reject) => {
-          pendingConfirmations.set(toolName, {
+          const timeout = setTimeout(() => {
+            pendingConfirmations.delete(execId);
+            reject(new Error('Confirmation timed out'));
+          }, 60_000);
+          pendingConfirmations.set(execId, {
             resolve,
             reject,
             tool: inferredTool,
             args: parsedArgs,
+            timeout,
           });
         });
 
         chrome.runtime.sendMessage({
           action: 'CONFIRM_EXECUTION',
-          toolName,
+          toolName: execId,
           description: inferredTool.description,
           tier,
         });
@@ -167,11 +179,11 @@ export function createMessageHandler(registry: ToolRegistry): void {
     let loadPromise: Promise<void> | undefined;
 
     const formTarget = document.querySelector(
-      `form[toolname="${toolName}"]`,
+      `form[toolname="${CSS.escape(toolName)}"]`,
     )?.getAttribute('target');
     if (formTarget) {
       targetFrame = document.querySelector(
-        `[name="${formTarget}"]`,
+        `[name="${CSS.escape(formTarget)}"]`,
       ) as HTMLIFrameElement | null;
       if (targetFrame) {
         loadPromise = new Promise<void>((resolve) => {
@@ -228,6 +240,7 @@ export function createMessageHandler(registry: ToolRegistry): void {
   ): boolean {
     const pending = pendingConfirmations.get((msg as { toolName: string }).toolName);
     if (pending) {
+      clearTimeout(pending.timeout);
       pendingConfirmations.delete((msg as { toolName: string }).toolName);
       registry.executorRegistry
         .execute(pending.tool, pending.args)
@@ -244,6 +257,7 @@ export function createMessageHandler(registry: ToolRegistry): void {
   ): boolean {
     const cancelled = pendingConfirmations.get((msg as { toolName: string }).toolName);
     if (cancelled) {
+      clearTimeout(cancelled.timeout);
       pendingConfirmations.delete((msg as { toolName: string }).toolName);
       cancelled.reject(new Error('Execution cancelled by user'));
     }

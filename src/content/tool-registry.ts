@@ -443,7 +443,7 @@ export class ToolRegistry {
       const args: Record<string, unknown> =
         typeof inputArgs === 'string' ? JSON.parse(inputArgs) : inputArgs;
       const form = document.querySelector(
-        `form[toolname="${toolName}"]`,
+        `form[toolname="${CSS.escape(toolName)}"]`,
       ) as HTMLFormElement | null;
       if (!form)
         return typeof inputArgs === 'string'
@@ -456,7 +456,7 @@ export class ToolRegistry {
         if (typeof value !== 'string') continue;
 
         const select = form.querySelector(
-          `select[name="${key}"]`,
+          `select[name="${CSS.escape(key)}"]`,
         ) as HTMLSelectElement | null;
         if (select) {
           const match = [...select.options].find(
@@ -469,7 +469,7 @@ export class ToolRegistry {
         }
 
         const radios = form.querySelectorAll(
-          `input[type="radio"][name="${key}"]`,
+          `input[type="radio"][name="${CSS.escape(key)}"]`,
         ) as NodeListOf<HTMLInputElement>;
         if (radios.length > 0) {
           const match = [...radios].find(
@@ -496,7 +496,7 @@ export class ToolRegistry {
   private enrichToolSchemas(tools: Tool[]): Tool[] {
     return tools.map((tool) => {
       const form = document.querySelector(
-        `form[toolname="${tool.name}"]`,
+        `form[toolname="${CSS.escape(tool.name)}"]`,
       ) as HTMLFormElement | null;
       if (!form || !tool.inputSchema) return tool;
 
@@ -517,7 +517,7 @@ export class ToolRegistry {
 
       for (const [propName, propDef] of Object.entries(mutableProps)) {
         const select = form.querySelector(
-          `select[name="${propName}"]`,
+          `select[name="${CSS.escape(propName)}"]`,
         ) as HTMLSelectElement | null;
         if (select) {
           const vals = [...select.options]
@@ -529,7 +529,7 @@ export class ToolRegistry {
           continue;
         }
         const radios = form.querySelectorAll(
-          `input[type="radio"][name="${propName}"]`,
+          `input[type="radio"][name="${CSS.escape(propName)}"]`,
         ) as NodeListOf<HTMLInputElement>;
         if (radios.length) {
           const vals = [...radios].map((r) => r.value).filter(Boolean);

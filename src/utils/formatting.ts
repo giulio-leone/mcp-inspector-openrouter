@@ -35,10 +35,16 @@ export function inlineFormat(text: string): string {
       )
       // Inline code: `text`
       .replace(/`([^`]+?)`/g, '<code>$1</code>')
-      // Links: [text](url)
+      // Links: [text](url) — only allow safe protocols
       .replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener">$1</a>',
+        (_match: string, text: string, url: string) => {
+          const trimmed = url.trim().toLowerCase();
+          if (/^https?:|^mailto:/.test(trimmed)) {
+            return `<a href="${url}" target="_blank" rel="noopener">${text}</a>`;
+          }
+          return text;
+        },
       )
   );
 }

@@ -28,7 +28,11 @@ function loadAll(): ConversationStore {
 }
 
 function saveAll(data: ConversationStore): void {
-  localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify(data));
+  try {
+    localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify(data));
+  } catch (e) {
+    console.warn('[WebMCP] localStorage.setItem failed (quota exceeded?):', e);
+  }
 }
 
 // ── Public API ──

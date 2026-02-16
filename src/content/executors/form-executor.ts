@@ -41,7 +41,7 @@ export class FormExecutor extends BaseExecutor {
 
     for (const [key, value] of Object.entries(parsed)) {
       const input = form.querySelector<HTMLElement>(
-        `[name="${key}"], #${key}`,
+        `[name="${CSS.escape(key)}"], #${CSS.escape(key)}`,
       );
       if (!input) continue;
 
@@ -50,7 +50,7 @@ export class FormExecutor extends BaseExecutor {
         input.type === 'radio'
       ) {
         const radio = form.querySelector<HTMLInputElement>(
-          `input[type="radio"][name="${key}"][value="${String(value)}"]`,
+          `input[type="radio"][name="${CSS.escape(key)}"][value="${CSS.escape(String(value))}"]`,
         );
         if (radio) this.setFieldValue(radio, value);
       } else {
