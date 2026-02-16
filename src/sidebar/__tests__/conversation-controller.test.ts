@@ -97,13 +97,14 @@ describe('ConversationController', () => {
       ctrl.createNewConversation();
       const firstId = ctrl.state.currentConvId!;
       ctrl.createNewConversation();
-      const secondId = ctrl.state.currentConvId!;
+      ctrl.state.chat = { history: [{ role: 'user', content: 'stale' }] } as unknown as import('../../services/adapters').OpenRouterChat;
 
       vi.clearAllMocks();
       // Delete second (current) conv; should switch to first
       ctrl.deleteConversation();
 
       expect(ctrl.state.currentConvId).toBe(firstId);
+      expect(ctrl.state.chat).toBeUndefined();
       expect(ChatUI.clearChat).toHaveBeenCalled();
       expect(ChatUI.renderConversationWithActions).toHaveBeenCalled();
       expect(header.setConversations).toHaveBeenCalled();

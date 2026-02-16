@@ -82,6 +82,7 @@ export class ConversationController {
     if (convs.length > 0) {
       // Avoid double reset: stateManager was already reset at delete start.
       this.state.currentConvId = convs[0].id;
+      this.state.chat = undefined;
       this.state.trace = [];
       const msgs = Store.getMessages(this.state.currentSite, convs[0].id);
       ChatUI.renderConversationWithActions(this.chatContainer, msgs, {
