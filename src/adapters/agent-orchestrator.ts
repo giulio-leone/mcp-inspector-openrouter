@@ -265,7 +265,7 @@ export class AgentOrchestrator implements IAgentPort {
               timeoutMs: delegateArgs.timeoutMs,
               depth: (this.deps.depth ?? 0) + 1,
               tools: tools,
-              context: { pageContext, tools, conversationHistory: [], liveState: null, tabId: target.tabId },
+              context: { pageContext, tools, conversationHistory: [], liveState: pageContext?.liveState ?? null, tabId: target.tabId },
             });
 
             if (subResult.success) {

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentOrchestrator, type OrchestratorDeps } from '../agent-orchestrator';
+import { ApprovalGateAdapter } from '../approval-gate-adapter';
 import type { AgentContext, ToolCallRecord } from '../../ports/types';
 import type { ParsedFunctionCall, PageContext, CleanTool, ToolResponse } from '../../types';
+import { SecurityTierLevel } from '../../utils/constants';
 
 vi.mock('../../sidebar/tool-loop', () => ({
   isNavigationTool: vi.fn(() => false),
@@ -454,6 +456,95 @@ describe('AgentOrchestrator — Integration Tests', () => {
       expect(mocks.subagentPort.spawn).toHaveBeenCalledWith(
         expect.objectContaining({ depth: 3 })
       );
+    });
+
+    it('passes page liveState snapshot into subagent context', async () => {
+      const liveState = {
+        timestamp: Date.now(),
+        media: [],
+        forms: [],
+        navigation: { currentUrl: 'https://example.com', scrollPercent: 10 },
+        auth: { isLoggedIn: true, hasLoginForm: false, hasLogoutButton: true },
+        interactive: {
+          openModals: [],
+          expandedAccordions: [],
+          openDropdowns: [],
+          activeTooltips: [],
+          visibleNotifications: [],
+        },
+        visibility: { overlays: [], loadingIndicators: false },
+      };
+
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({
+          functionCalls: [{ id: 'fc1', name: 'delegate_task', args: { prompt: 'Use live state' } }],
+        })
+        .mockResolvedValueOnce({ text: 'done' });
+
+      await orchestrator.run('delegate', makeContext({
+        pageContext: { url: 'https://example.com', liveState } as PageContext,
+      }));
+
+      expect(mocks.subagentPort.spawn).toHaveBeenCalledWith(expect.objectContaining({
+        context: expect.objectContaining({ liveState }),
+      }));
+    });
+  });
+
+  // ── Approval Gate Integration ──
+
+  describe('approval gate integration', () => {
+    it('blocks Tier 2 tools when approval is denied', async () => {
+      const innerToolPort = {
+        execute: vi.fn().mockResolvedValue({ success: true, data: 'should-not-run' }),
+        getAvailableTools: vi.fn().mockResolvedValue([]),
+        onToolsChanged: vi.fn().mockReturnValue(() => {}),
+      };
+      const onApprovalNeeded = vi.fn().mockResolvedValue('denied');
+      const resolveTier = vi.fn().mockReturnValue(SecurityTierLevel.MUTATION);
+      const approvalGate = new ApprovalGateAdapter(innerToolPort as any, resolveTier, onApprovalNeeded);
+      const orch = new AgentOrchestrator(makeDeps(mocks, { toolPort: approvalGate as any }));
+
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({
+          functionCalls: [{ id: 'fc1', name: 'delete_post', args: { id: 'p-1' } }],
+        })
+        .mockResolvedValueOnce({ text: 'handled' });
+
+      const result = await orch.run('delete', makeContext());
+
+      expect(onApprovalNeeded).toHaveBeenCalledWith(expect.objectContaining({
+        toolName: 'delete_post',
+        tier: SecurityTierLevel.MUTATION,
+      }));
+      expect(innerToolPort.execute).not.toHaveBeenCalled();
+      expect(result.toolCalls[0].result.success).toBe(false);
+      expect(result.toolCalls[0].result.error).toContain('denied');
+    });
+
+    it('bypasses approval in YOLO mode and executes Tier 2 tools', async () => {
+      const innerToolPort = {
+        execute: vi.fn().mockResolvedValue({ success: true, data: 'deleted' }),
+        getAvailableTools: vi.fn().mockResolvedValue([]),
+        onToolsChanged: vi.fn().mockReturnValue(() => {}),
+      };
+      const onApprovalNeeded = vi.fn().mockResolvedValue('denied');
+      const resolveTier = vi.fn().mockReturnValue(SecurityTierLevel.MUTATION);
+      const approvalGate = new ApprovalGateAdapter(innerToolPort as any, resolveTier, onApprovalNeeded);
+      approvalGate.setAutoApprove(true);
+      const orch = new AgentOrchestrator(makeDeps(mocks, { toolPort: approvalGate as any }));
+
+      mocks.mockChat.sendMessage
+        .mockResolvedValueOnce({
+          functionCalls: [{ id: 'fc1', name: 'delete_post', args: { id: 'p-1' } }],
+        })
+        .mockResolvedValueOnce({ text: 'done' });
+
+      const result = await orch.run('delete', makeContext());
+
+      expect(onApprovalNeeded).not.toHaveBeenCalled();
+      expect(innerToolPort.execute).toHaveBeenCalledWith('delete_post', { id: 'p-1' }, expect.any(Object));
+      expect(result.toolCalls[0].result).toEqual({ success: true, data: 'deleted' });
     });
   });
 
