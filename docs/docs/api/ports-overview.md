@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Ports Overview
 
-The hexagonal architecture defines **20+ stable port interfaces** that decouple the domain from infrastructure. Each port is a TypeScript interface in `src/ports/`.
+The hexagonal architecture defines **14 key port interfaces** (with additional specialized ports) that decouple the domain from infrastructure. Each port is a TypeScript interface in `src/ports/`.
 
 ## Port Summary
 
@@ -30,17 +30,20 @@ The hexagonal architecture defines **20+ stable port interfaces** that decouple 
 ```
 AIChatController
     └─ AgentOrchestrator (implements IAgentPort)
-        ├─ IToolExecutionPort  → ChromeToolAdapter
-        ├─ IPlanningPort       → PlanningAdapter
-        ├─ ISubagentPort       → SubagentAdapter
-        ├─ IContextPort        → ChromeContextAdapter
-        ├─ IToolCachePort      → IndexedDBToolCacheAdapter
-        ├─ ICrawlerPort        → SemanticCrawlerAdapter
-        └─ IInstagramPort      → InstagramAdapter
+        ├─ IToolExecutionPort   → ChromeToolAdapter
+        ├─ IPlanningPort        → PlanningAdapter
+        ├─ ISubagentPort        → SubagentAdapter
+        ├─ IContextPort         → ChromeContextAdapter
+        ├─ IContextManagerPort  → ContextManagerAdapter
+        ├─ ITabSessionPort      → TabSessionAdapter
+        ├─ ITabDelegationPort   → TabDelegationAdapter
+        ├─ IToolCachePort       → IndexedDBToolCacheAdapter
+        ├─ ICrawlerPort         → SemanticCrawlerAdapter
+        └─ IInstagramPort       → InstagramAdapter
 ```
 
 All ports are defined as `readonly` properties in `OrchestratorDeps`, enforcing immutability at the type level.
 
 ## Workflow & A2A
 
-The orchestrator supports multi-step workflows through `IPlanningPort` and agent-to-agent (A2A) delegation via `ISubagentPort`. Workflow plans are decomposed into steps, each executed through the appropriate port, enabling complex cross-platform automation sequences.
+The orchestrator supports multi-step workflows through `IPlanningPort` and agent-to-agent (A2A) tab delegation via `ITabDelegationPort`. Workflow plans are decomposed into steps, each executed through the appropriate port. Child agent spawning is handled by `ISubagentPort`, enabling complex cross-platform automation sequences.
