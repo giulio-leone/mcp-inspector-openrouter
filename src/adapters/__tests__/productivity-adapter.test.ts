@@ -58,6 +58,21 @@ describe('ProductivityAdapter', () => {
       setLocation('https://www.example.com/');
       expect(adapter.detectPlatform()).toBe('unknown');
     });
+
+    it('detects google-docs on docs.google.com', () => {
+      setLocation('https://docs.google.com/document/d/123/edit');
+      expect(adapter.detectPlatform()).toBe('google-docs');
+    });
+
+    it('detects trello on trello.com', () => {
+      setLocation('https://trello.com/b/abc/my-board');
+      expect(adapter.detectPlatform()).toBe('trello');
+    });
+
+    it('detects slack on app.slack.com', () => {
+      setLocation('https://app.slack.com/client/T123/C456');
+      expect(adapter.detectPlatform()).toBe('slack');
+    });
   });
 
   // ── isProductivityApp ──
@@ -79,6 +94,25 @@ describe('ProductivityAdapter', () => {
     });
   });
 
+  // ── isProductivityApp ──
+
+  describe('isProductivityApp (additional)', () => {
+    it('returns true on google-docs', () => {
+      setLocation('https://docs.google.com/document/d/123/edit');
+      expect(adapter.isProductivityApp()).toBe(true);
+    });
+
+    it('returns true on trello', () => {
+      setLocation('https://trello.com/b/abc');
+      expect(adapter.isProductivityApp()).toBe(true);
+    });
+
+    it('returns true on slack', () => {
+      setLocation('https://app.slack.com/');
+      expect(adapter.isProductivityApp()).toBe(true);
+    });
+  });
+
   // ── Sub-adapters ──
 
   describe('sub-adapters', () => {
@@ -90,6 +124,21 @@ describe('ProductivityAdapter', () => {
     it('exposes github adapter', () => {
       expect(adapter.github).toBeDefined();
       expect(typeof adapter.github.isOnGitHub).toBe('function');
+    });
+
+    it('exposes googleDocs adapter', () => {
+      expect(adapter.googleDocs).toBeDefined();
+      expect(typeof adapter.googleDocs.isOnGoogleDocs).toBe('function');
+    });
+
+    it('exposes trello adapter', () => {
+      expect(adapter.trello).toBeDefined();
+      expect(typeof adapter.trello.isOnTrello).toBe('function');
+    });
+
+    it('exposes slack adapter', () => {
+      expect(adapter.slack).toBeDefined();
+      expect(typeof adapter.slack.isOnSlack).toBe('function');
     });
   });
 });

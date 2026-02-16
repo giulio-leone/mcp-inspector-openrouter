@@ -177,4 +177,64 @@ describe('TrelloAdapter', () => {
   it('throws when comment textarea not found', async () => {
     await expect(adapter.addComment('test')).rejects.toThrow('Trello element not found');
   });
+
+  it('rejects empty listName for moveCard', async () => {
+    await expect(adapter.moveCard('')).rejects.toThrow('listName must be non-empty');
+  });
+
+  it('rejects empty member for assignMember', async () => {
+    await expect(adapter.assignMember('')).rejects.toThrow('member must be non-empty');
+  });
+
+  it('rejects empty date for setDueDate', async () => {
+    await expect(adapter.setDueDate('')).rejects.toThrow('date must be non-empty');
+  });
+
+  it('rejects empty name for createList', async () => {
+    await expect(adapter.createList('')).rejects.toThrow('name must be non-empty');
+  });
+
+  it('rejects empty label for filterByLabel', async () => {
+    await expect(adapter.filterByLabel('')).rejects.toThrow('label must be non-empty');
+  });
+
+  it('rejects empty member for filterByMember', async () => {
+    await expect(adapter.filterByMember('')).rejects.toThrow('member must be non-empty');
+  });
+
+  it('throws when move card button not found', async () => {
+    await expect(adapter.moveCard('Done')).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when archive card button not found', async () => {
+    await expect(adapter.archiveCard()).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when archive list button not found', async () => {
+    await expect(adapter.archiveList()).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when assign member button not found', async () => {
+    await expect(adapter.assignMember('Alice')).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when due date button not found', async () => {
+    await expect(adapter.setDueDate('2025-03-01')).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when add list button not found', async () => {
+    await expect(adapter.createList('Backlog')).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when search input not found', async () => {
+    await expect(adapter.searchCards('test')).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when filter by label button not found', async () => {
+    await expect(adapter.filterByLabel('red')).rejects.toThrow('Trello element not found');
+  });
+
+  it('throws when filter by member button not found', async () => {
+    await expect(adapter.filterByMember('Bob')).rejects.toThrow('Trello element not found');
+  });
 });
