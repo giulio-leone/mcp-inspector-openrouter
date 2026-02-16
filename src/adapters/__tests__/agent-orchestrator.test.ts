@@ -45,13 +45,17 @@ function createMocks() {
   return { toolPort, contextPort, planningPort, mockChat, chatFactory, buildConfig };
 }
 
-function makeDeps(mocks: ReturnType<typeof createMocks>): OrchestratorDeps {
+function makeDeps(
+  mocks: ReturnType<typeof createMocks>,
+  overrides: Partial<OrchestratorDeps> = {},
+): OrchestratorDeps {
   return {
     toolPort: mocks.toolPort as any,
     contextPort: mocks.contextPort as any,
     planningPort: mocks.planningPort as any,
     chatFactory: mocks.chatFactory,
     buildConfig: mocks.buildConfig,
+    ...overrides,
   };
 }
 
@@ -314,6 +318,62 @@ describe('AgentOrchestrator', () => {
 
     await orchestrator.run('go', makeContext({ tabId: 5, mentionContexts: undefined as any }));
     expect(mocks.toolPort.execute).toHaveBeenCalledWith('t', {}, { tabId: 5, originTabId: 5 });
+  });
+
+  it('delegates from mentioned tab and preserves origin-tab isolation', async () => {
+    const delegation = {
+      registerTab: vi.fn(),
+      unregisterTab: vi.fn(),
+      findTabForTask: vi.fn().mockReturnValue({
+        tabId: 77,
+        url: 'https://youtube.com',
+        title: 'YouTube',
+        skills: ['video'],
+      }),
+      delegate: vi.fn().mockResolvedValue({
+        sourceTabId: 42,
+        targetTabId: 77,
+        taskDescription: 'resume video',
+        status: 'completed',
+        result: { ok: true },
+        durationMs: 12,
+      }),
+      listRegisteredTabs: vi.fn().mockReturnValue([]),
+    };
+    const orch = new AgentOrchestrator(makeDeps(mocks, { delegation: delegation as any }));
+
+    mocks.mockChat.sendMessage
+      .mockResolvedValueOnce({
+        functionCalls: [{
+          id: 'fc1',
+          name: 'delegate_to_tab',
+          args: { required_skills: ['video'], task: 'resume video' },
+        }],
+      })
+      .mockResolvedValueOnce({ text: 'done' });
+
+    await orch.run('go', makeContext({ tabId: 1, mentionContexts: [{ tabId: 42 }] as any }));
+
+    expect(delegation.findTabForTask).toHaveBeenCalledWith(['video'], 42);
+    expect(delegation.delegate).toHaveBeenCalledWith(42, 77, 'resume video');
+    expect(mocks.toolPort.execute).not.toHaveBeenCalled();
+  });
+
+  it('injects delegate_to_tab only when delegation adapter is present', async () => {
+    const delegation = {
+      registerTab: vi.fn(),
+      unregisterTab: vi.fn(),
+      findTabForTask: vi.fn().mockReturnValue(null),
+      delegate: vi.fn(),
+      listRegisteredTabs: vi.fn().mockReturnValue([]),
+    };
+    const orch = new AgentOrchestrator(makeDeps(mocks, { delegation: delegation as any }));
+    mocks.mockChat.sendMessage.mockResolvedValueOnce({ text: 'ok' });
+
+    await orch.run('go', makeContext({ tools: [{ name: 'base_tool' }] as any }));
+
+    const firstTools = mocks.buildConfig.mock.calls[0][1] as Array<{ name: string }>;
+    expect(firstTools.some(t => t.name === 'delegate_to_tab')).toBe(true);
   });
 
   // 18. Dispose sets chat to null
