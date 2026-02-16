@@ -320,6 +320,33 @@ toolTable.addEventListener('copy-tools', async (e): Promise<void> => {
   await navigator.clipboard.writeText(toolTable.getClipboardText(format));
 });
 
+// Export manifest archive — fetch from content script and download as JSON
+toolTable.addEventListener('export-manifest', async (): Promise<void> => {
+  const tab = await getCurrentTab();
+  if (!tab?.id) return;
+  try {
+    const result = await chrome.tabs.sendMessage(tab.id, { action: 'GET_SITE_MANIFEST' }) as { manifest?: string; error?: string };
+    if (result?.error || !result?.manifest) {
+      statusBar.message = result?.error ?? 'No manifest available';
+      statusBar.type = 'error';
+      return;
+    }
+    const blob = new Blob([result.manifest], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const host = new URL(tab.url ?? '').hostname.replace(/\./g, '_');
+    a.download = `wmcp-manifest-${host}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    statusBar.message = 'Manifest exported';
+    statusBar.type = 'info';
+  } catch {
+    statusBar.message = 'Failed to export manifest';
+    statusBar.type = 'error';
+  }
+});
+
 // Manual tool execution — handled via component event
 toolTable.addEventListener('execute-tool', async (e): Promise<void> => {
   const { name, args } = (e as CustomEvent).detail;

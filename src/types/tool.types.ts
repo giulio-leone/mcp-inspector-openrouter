@@ -8,7 +8,7 @@ import type { LiveStateSnapshot } from './live-state.types';
 // ── Tool Source ──
 
 /** Origin tier of a discovered tool */
-export type ToolSource = 'native' | 'declarative' | 'inferred' | 'ai';
+export type ToolSource = 'native' | 'declarative' | 'inferred' | 'ai' | 'manifest';
 
 // ── Security Tiers ──
 

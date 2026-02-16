@@ -141,6 +141,7 @@ tbody.prettify pre { white-space: pre-wrap; }
 .badge-declarative { background: #dbeafe; color: #1e40af; }
 .badge-inferred    { background: #ffedd5; color: #9a3412; }
 .badge-ai          { background: #ede9fe; color: #5b21b6; }
+.badge-manifest    { background: #fed7aa; color: #c2410c; }
 
 /* ── Confidence bar ── */
 .confidence-bar {
@@ -251,6 +252,7 @@ tbody.prettify pre { white-space: pre-wrap; }
   .badge-declarative { background: #1e3a5f; color: #93c5fd; }
   .badge-inferred    { background: #451a03; color: #fcd34d; }
   .badge-ai          { background: #2e1065; color: #c4b5fd; }
+  .badge-manifest    { background: #7c2d12; color: #fdba74; }
 
   .confidence-bar-track { background: #404040; }
 

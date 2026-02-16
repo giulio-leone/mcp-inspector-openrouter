@@ -123,7 +123,9 @@ export class ToolTable extends BaseElement {
         ? 'badge-native'
         : src === 'declarative'
           ? 'badge-declarative'
-          : 'badge-inferred';
+          : src === 'manifest'
+            ? 'badge-manifest'
+            : 'badge-inferred';
     const badgeText = isAI
       ? 'AI'
       : src.charAt(0).toUpperCase() + src.slice(1);
@@ -173,6 +175,7 @@ export class ToolTable extends BaseElement {
           <div id="copyToClipboard">
             <span @click=${() => this._onCopy('script')}>📝 Copy as ScriptToolConfig</span>
             <span @click=${() => this._onCopy('json')}>📝 Copy as JSON</span>
+            <span @click=${this._onExportManifest}>📦 Export Manifest Archive</span>
           </div>` : nothing}
       </div>`;
   }
@@ -180,7 +183,7 @@ export class ToolTable extends BaseElement {
   private _renderToolOption(item: CleanTool): unknown {
     const src = item._source ?? 'unknown';
     const isAI = item._aiRefined;
-    const prefix = isAI ? '🟣' : src === 'native' ? '🟢' : src === 'declarative' ? '🔵' : '🟡';
+    const prefix = isAI ? '🟣' : src === 'native' ? '🟢' : src === 'declarative' ? '🔵' : src === 'manifest' ? '🟠' : '🟡';
     return html`<option value=${item.name}>${prefix} ${item.name}</option>`;
   }
 
@@ -250,6 +253,13 @@ export class ToolTable extends BaseElement {
       bubbles: true,
       composed: true,
       detail: { format },
+    }));
+  }
+
+  private _onExportManifest(): void {
+    this.dispatchEvent(new CustomEvent('export-manifest', {
+      bubbles: true,
+      composed: true,
     }));
   }
 

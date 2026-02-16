@@ -43,7 +43,13 @@ if (window.__wmcp_loaded) {
   const site = extractSite(location.href);
   const manifestAdapter = registry.getToolManifest()!;
 
-  wmcpServer.onRequest(() => manifestAdapter.toMCPJson(site));
+  wmcpServer.onRequest((url: string) => {
+    if (url) {
+      const tools = manifestAdapter.getToolsForUrl(site, url);
+      return JSON.stringify({ origin: site, url, tools }, null, 2);
+    }
+    return manifestAdapter.toMCPJson(site);
+  });
   registry.onManifestUpdate(() => {
     wmcpServer.exposeManifest(manifestAdapter.toMCPJson(site));
   });

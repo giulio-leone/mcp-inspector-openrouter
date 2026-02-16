@@ -98,9 +98,10 @@ export class ToolRegistry {
           const asClean: CleanTool[] = pageTools.map(t => ({
             name: t.name,
             description: t.description,
-            inputSchema: t.inputSchema as CleanTool['inputSchema'],
+            inputSchema: t.inputSchema as unknown as CleanTool['inputSchema'],
             category: t.category as CleanTool['category'],
             annotations: t.annotations as CleanTool['annotations'],
+            _source: 'manifest' as const,
           }));
           // Use a synthetic URL from the pattern to restore state
           this.toolManifest.updatePage(site, `https://${site}${page.urlPattern}`, asClean);

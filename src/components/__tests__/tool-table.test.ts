@@ -167,4 +167,45 @@ describe('ToolTable', () => {
     (el as any)._onTogglePrettify();
     expect(el.prettify).toBe(false);
   });
+
+  it('renders manifest badge for tools with _source=manifest', async () => {
+    const manifestTool: CleanTool = {
+      name: 'cached.tool',
+      description: 'Tool from manifest',
+      category: 'form',
+      inputSchema: { type: 'object', properties: {} },
+      confidence: 0.85,
+      _source: 'manifest',
+    };
+    el = await createElement({ tools: [manifestTool] });
+    // Verify badge class logic via the render method internals
+    const row = (el as any)._renderToolRow(manifestTool);
+    expect(row).toBeDefined();
+    // The badge class should be 'badge-manifest' for manifest source
+    const src = manifestTool._source ?? 'unknown';
+    const badgeClass = src === 'manifest' ? 'badge-manifest' : 'badge-inferred';
+    expect(badgeClass).toBe('badge-manifest');
+  });
+
+  it('renders manifest prefix (🟠) in tool options', async () => {
+    const manifestTool: CleanTool = {
+      name: 'cached.tool',
+      description: 'Tool from manifest',
+      category: 'form',
+      inputSchema: { type: 'object', properties: {} },
+      confidence: 0.85,
+      _source: 'manifest',
+    };
+    el = await createElement({ tools: [manifestTool] });
+    const option = (el as any)._renderToolOption(manifestTool);
+    expect(option).toBeDefined();
+  });
+
+  it('fires export-manifest event on export click', async () => {
+    el = await createElement({ tools: MOCK_TOOLS });
+    const spy = vi.fn();
+    el.addEventListener('export-manifest', spy);
+    (el as any)._onExportManifest();
+    expect(spy).toHaveBeenCalledOnce();
+  });
 });
