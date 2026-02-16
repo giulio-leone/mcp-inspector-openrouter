@@ -48,4 +48,4 @@ Then load the extension in Chrome:
 3. Type a command like _"Click the sign-in button"_ or _"Fill out this form with my info"_
 4. Watch the agent plan and execute the steps in real time
 
-For a deeper understanding of the system, see the [Architecture Overview](./architecture/overview).
+For a deeper understanding of the system, see the [Architecture Overview](/docs/architecture).
