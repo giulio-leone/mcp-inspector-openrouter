@@ -200,6 +200,18 @@ describe('ConversationController + StateManager', () => {
     expect(spy).toHaveBeenCalledOnce();
   });
 
+  it('deleteConversation resets state once even when switching to remaining conversation', () => {
+    const spy = vi.spyOn(sm, 'resetConversationState');
+    const { ctrl } = makeController();
+    ctrl.createNewConversation();
+    ctrl.createNewConversation();
+    spy.mockClear();
+
+    ctrl.deleteConversation();
+
+    expect(spy).toHaveBeenCalledOnce();
+  });
+
   it('handleSiteChange calls stateManager.resetConversationState on site change', () => {
     const spy = vi.spyOn(sm, 'resetConversationState');
     const { ctrl } = makeController({ currentConvId: 'conv_123' });

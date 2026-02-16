@@ -80,7 +80,15 @@ export class ConversationController {
     ChatUI.clearChat(this.chatContainer);
     const convs = Store.listConversations(this.state.currentSite);
     if (convs.length > 0) {
-      this.switchToConversation(convs[0].id);
+      // Avoid double reset: stateManager was already reset at delete start.
+      this.state.currentConvId = convs[0].id;
+      this.state.trace = [];
+      const msgs = Store.getMessages(this.state.currentSite, convs[0].id);
+      ChatUI.renderConversationWithActions(this.chatContainer, msgs, {
+        onEdit: (i, content) => this.editMessage(i, content),
+        onDelete: (i) => this.deleteMessage(i),
+      });
+      this.refreshConversationList();
     } else {
       this.refreshConversationList();
     }
