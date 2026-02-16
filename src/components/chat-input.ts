@@ -9,17 +9,20 @@ export class ChatInput extends BaseElement {
   static properties = {
     disabled: { type: Boolean },
     placeholder: { type: String },
+    presets: { type: Array },
     _hasContent: { type: Boolean, state: true },
   };
 
   declare disabled: boolean;
   declare placeholder: string;
+  declare presets: string[];
   declare _hasContent: boolean;
 
   constructor() {
     super();
     this.disabled = false;
     this.placeholder = 'Type your question...';
+    this.presets = [];
     this._hasContent = false;
   }
 
@@ -58,6 +61,10 @@ export class ChatInput extends BaseElement {
     this.querySelector('textarea')?.focus();
   }
 
+  setPresets(presets: string[]): void {
+    this.presets = presets;
+  }
+
   /** Clears the textarea and resets state. */
   clear(): void {
     const ta = this.querySelector('textarea');
@@ -70,6 +77,18 @@ export class ChatInput extends BaseElement {
 
   override render(): unknown {
     return html`
+      ${this.presets.length > 0
+        ? html`<div class="chat-presets">
+            ${this.presets.map((preset, index) => html`
+              <button
+                type="button"
+                class="chat-preset-btn secondary small"
+                data-preset-index=${index}
+                @click=${this._onPresetClick}
+              >${preset}</button>
+            `)}
+          </div>`
+        : null}
       <div class="chat-input-row">
         <textarea
           placeholder=${this.placeholder}
@@ -132,6 +151,18 @@ export class ChatInput extends BaseElement {
     this.dispatchEvent(new CustomEvent('download-debug-log', {
       bubbles: true,
       composed: true,
+    }));
+  }
+
+  private _onPresetClick(e: Event): void {
+    const button = e.currentTarget as HTMLButtonElement | null;
+    const index = Number(button?.dataset.presetIndex ?? '-1');
+    const prompt = this.presets[index];
+    if (!prompt) return;
+    this.dispatchEvent(new CustomEvent('apply-preset', {
+      bubbles: true,
+      composed: true,
+      detail: { prompt },
     }));
   }
 }

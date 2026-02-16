@@ -16,7 +16,6 @@ vi.stubGlobal('chrome', {
 });
 
 import { ConversationController, type ConversationState } from '../conversation-controller';
-import * as ChatUI from '../chat-ui';
 import * as Store from '../chat-store';
 import { AIChatController } from '../ai-chat-controller';
 
@@ -126,7 +125,7 @@ describe('PlanManager.resetOnConversationChange', () => {
 describe('AIChatController.resetOnConversationChange', () => {
   it('clears activeMentions and lastSuggestedUserPrompt (pinnedConv is self-cleaning)', () => {
     const ctrl = new AIChatController({
-      chatInput: {} as any,
+      chatInput: { setPresets: () => {} } as any,
       chatHeader: {} as any,
       getCurrentTab: async () => undefined,
       getCurrentTools: () => [],

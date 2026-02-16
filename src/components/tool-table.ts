@@ -135,8 +135,16 @@ export class ToolTable extends BaseElement {
             ? 'badge-manifest'
             : 'badge-inferred';
     const badgeText = isAI
-      ? 'AI'
+      ? 'AI-tuned'
       : src.charAt(0).toUpperCase() + src.slice(1);
+    const sourceLabelMap: Record<string, string> = {
+      native: 'Built-in',
+      declarative: 'Form-based',
+      inferred: 'Detected',
+      manifest: 'Saved',
+      unknown: 'Other',
+    };
+    const displayBadgeText = isAI ? badgeText : (sourceLabelMap[src] ?? badgeText);
     const conf = item.confidence ?? 1;
     const pct = Math.round(conf * 100);
     const colorClass =
@@ -144,7 +152,7 @@ export class ToolTable extends BaseElement {
 
     return html`
       <tr class="category-group-item">
-        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+        <td><span class="badge ${badgeClass}">${displayBadgeText}</span></td>
         <td style="font-weight:600;font-size:11px">${item.name}</td>
         <td style="font-size:11px;max-width:220px">${item.description ?? ''}</td>
         <td>
@@ -180,10 +188,10 @@ export class ToolTable extends BaseElement {
           </tbody>
         </table>
         ${hasTools ? html`
-          <div class="copy-to-clipboard">
-            <span @click=${this._onCopyScript}>📝 Copy for setup</span>
-            <span @click=${this._onCopyJson}>📝 Copy as data</span>
-            <span @click=${this._onExportManifest}>📦 Download page action report</span>
+          <div class="copy-to-clipboard" role="group" aria-label="Action export controls">
+            <button type="button" class="copy-action" @click=${this._onCopyScript}>📝 Copy for setup</button>
+            <button type="button" class="copy-action" @click=${this._onCopyJson}>📝 Copy as data</button>
+            <button type="button" class="copy-action" @click=${this._onExportManifest}>📦 Download page action report</button>
           </div>` : nothing}
       </div>`;
   }
@@ -204,7 +212,7 @@ export class ToolTable extends BaseElement {
     const toolResultsId = this._elId('toolResults');
     return html`
       <div class="card">
-        <div class="card-title">Run an action manually</div>
+        <div class="card-title">Try an action manually</div>
         <div class="form-group">
           <label for=${toolNamesId}>Action</label>
           <select id=${toolNamesId} ?disabled=${!hasTools} @change=${this._onToolChange}>
@@ -215,13 +223,13 @@ export class ToolTable extends BaseElement {
           </select>
         </div>
         <div class="form-group">
-          <label for=${inputArgsTextId}>Action details</label>
+          <label for=${inputArgsTextId}>Details (optional)</label>
           <textarea id=${inputArgsTextId} ?disabled=${!hasTools}
             .value=${this._inputArgs}
             @input=${this._onInputArgsChange}></textarea>
         </div>
         <div class="form-group">
-          <button id=${executeBtnId} ?disabled=${!hasTools} @click=${this._onExecute}>Run action</button>
+          <button id=${executeBtnId} ?disabled=${!hasTools} @click=${this._onExecute}>Try action</button>
         </div>
         <pre id=${toolResultsId} class="tool-results">${this._toolResults}</pre>
       </div>`;

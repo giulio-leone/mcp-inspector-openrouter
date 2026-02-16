@@ -178,4 +178,19 @@ describe('ChatInput', () => {
     const event = await received;
     expect(event.type).toBe('download-debug-log');
   });
+
+  it('dispatches apply-preset when preset button is clicked', async () => {
+    el = await createElement({ presets: ['Summarize this page'] });
+    await el.updateComplete;
+    await new Promise(r => setTimeout(r, 0));
+
+    const received = new Promise<CustomEvent>(resolve => {
+      el.addEventListener('apply-preset', (e) => resolve(e as CustomEvent), { once: true });
+    });
+
+    (el as any)._onPresetClick({ currentTarget: { dataset: { presetIndex: '0' } } } as Event);
+
+    const event = await received;
+    expect(event.detail.prompt).toBe('Summarize this page');
+  });
 });

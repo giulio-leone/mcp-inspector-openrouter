@@ -14,7 +14,7 @@
   --bg-elevated: #f1f3f5;
   --text: #1a1d23;
   --text-secondary: #5f6b7a;
-  --text-muted: #9ca3af;
+  --text-muted: #6b7280;
   --border: #e2e5ea;
   --border-light: #edf0f3;
   --success: #10b981;
@@ -152,7 +152,7 @@ input {
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-1);
   background-color: var(--color-surface-card);
-  font-family: var(--font-mono);
+  font-family: var(--font);
   font-size: 13px;
   color: var(--color-text-primary);
   transition: border-color var(--motion-base), box-shadow var(--motion-base);
@@ -212,6 +212,10 @@ button {
   border: none;
   border-radius: var(--radius-2);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
   font-family: var(--font);
   font-weight: 600;
   font-size: 13px;
@@ -224,7 +228,7 @@ button:hover {
 
 .secondary {
   color: var(--color-brand-500);
-  background-color: transparent !important;
+  background-color: var(--color-surface-card) !important;
   outline: 1px solid var(--color-brand-500);
   outline-offset: -1px;
 }
@@ -232,6 +236,7 @@ button:hover {
 .secondary:hover {
   color: var(--color-brand-600);
   outline-color: var(--color-brand-600);
+  background-color: var(--color-surface-elevated) !important;
 }
 
 .small {
@@ -320,6 +325,14 @@ button:hover {
 .btn-danger  { background: var(--color-error); }
 .btn-danger:hover { background: #dc2626; }
 
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
 /* ── Utility ── */
 .is-hidden { display: none; }
 .border-top {
@@ -354,6 +367,17 @@ button:hover {
 /* ── Responsive ── */
 @media (max-width: 360px) {
   .card { padding: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── SVG Icons ── */

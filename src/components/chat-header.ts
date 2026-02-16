@@ -74,8 +74,8 @@ export class ChatHeader extends BaseElement {
         <button class="icon-btn" title="Start new chat" @click=${this._onNewChat}>＋</button>
         <button class="icon-btn danger" title="Delete this chat" @click=${this._onDeleteChat}>🗑</button>
         <button class="plan-mode-toggle icon-btn ${this.planActive ? 'active' : ''}"
-          title="Step-by-step mode" @click=${this._onTogglePlan}>
-          ${unsafeHTML(ICONS.clipboard)} Plan steps
+          title="Guided mode" @click=${this._onTogglePlan}>
+          ${unsafeHTML(ICONS.clipboard)} Guided mode
         </button>
       </div>
     `;

@@ -5,11 +5,13 @@ import '../components/tab-session-indicator';
 import '../components/chat-container';
 import '../components/chat-header';
 import '../components/chat-input';
+import '../components/onboarding-checklist';
 import '../components/status-bar';
 import '../components/tool-table';
 import '../components/manifest-dashboard';
 import type { ChatHeader } from '../components/chat-header';
 import type { ChatInput } from '../components/chat-input';
+import type { OnboardingChecklist } from '../components/onboarding-checklist';
 import type { StatusBar } from '../components/status-bar';
 import type { ToolTable } from '../components/tool-table';
 import type { ManifestDashboard } from '../components/manifest-dashboard';
@@ -36,6 +38,7 @@ const lockLabel = $<HTMLSpanElement>('lockLabel');
 const chatContainer = $<HTMLElement>('chatContainer');
 const chatHeader = $<ChatHeader>('chatHeader');
 const chatInput = $<ChatInput>('chatInput');
+const onboardingChecklist = $<OnboardingChecklist>('onboardingChecklist');
 const chatAdvancedSection = $<HTMLElement>('chatAdvancedSection');
 const chatAdvancedDetails = $<HTMLDetailsElement>('chatAdvancedDetails');
 const sessionIndicator = $<TabSessionIndicator>('sessionIndicator');
@@ -58,7 +61,10 @@ const tabSession = new TabSessionAdapter();
 tabSession.startSession();
 
 chatAdvancedDetails.addEventListener('toggle', () => {
-  if (chatAdvancedDetails.open) void loadManifest();
+  if (chatAdvancedDetails.open) {
+    onboardingChecklist.markAdvancedOpened();
+    void loadManifest();
+  }
 });
 
 // ── Manifest dashboard wiring ──
@@ -159,7 +165,22 @@ chatHeader.addEventListener('toggle-plan', ((e: CustomEvent) => {
   planManager.planModeEnabled = e.detail.active;
   chrome.storage.local.set({ [STORAGE_KEY_PLAN_MODE]: planManager.planModeEnabled });
 }) as EventListener);
-chatHeader.addEventListener('open-options', () => chrome.runtime.openOptionsPage());
+chatHeader.addEventListener('open-options', () => {
+  onboardingChecklist.markPreferencesOpened();
+  chrome.runtime.openOptionsPage();
+});
+onboardingChecklist.addEventListener('onboarding-focus-input', () => {
+  chatInput.focus();
+});
+onboardingChecklist.addEventListener('onboarding-open-advanced', () => {
+  chatAdvancedSection.hidden = false;
+  chatAdvancedDetails.open = true;
+  onboardingChecklist.markAdvancedOpened();
+});
+onboardingChecklist.addEventListener('onboarding-open-options', () => {
+  onboardingChecklist.markPreferencesOpened();
+  chrome.runtime.openOptionsPage();
+});
 
 // AI chat controller
 // Security dialog component
@@ -180,6 +201,14 @@ void aiChat.init();
 void chatInput.updateComplete.then(() => {
   aiChat.setupListeners();
 });
+chatInput.addEventListener('send-message', () => {
+  onboardingChecklist.markMessageSent();
+});
+chatInput.addEventListener('apply-preset', ((e: CustomEvent<{ prompt: string }>) => {
+  chatInput.value = e.detail.prompt;
+  chatInput.syncState();
+  chatInput.focus();
+}) as EventListener);
 chatInput.addEventListener('copy-trace', async (): Promise<void> => {
   await navigator.clipboard.writeText(JSON.stringify(convCtrl.state.trace, null, ' '));
 });
