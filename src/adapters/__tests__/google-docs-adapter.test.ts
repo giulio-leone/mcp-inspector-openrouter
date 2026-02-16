@@ -180,4 +180,72 @@ describe('GoogleDocsAdapter', () => {
   it('throws when comment button not found', async () => {
     await expect(adapter.addComment('test')).rejects.toThrow('Google Docs element not found');
   });
+
+  it('rejects empty text for addComment', async () => {
+    await expect(adapter.addComment('')).rejects.toThrow('text must be non-empty');
+  });
+
+  it('clicks go to end', async () => {
+    const el = addElement('div', { class: 'kix-appview-editor' });
+    let clicked = false;
+    el.addEventListener('click', () => { clicked = true; });
+    await adapter.goToEnd();
+    expect(clicked).toBe(true);
+  });
+
+  it('clicks find and replace button', async () => {
+    const btn = addElement('button', { 'aria-label': 'Find and replace' });
+    let clicked = false;
+    btn.addEventListener('click', () => { clicked = true; });
+    await adapter.findAndReplace('old', 'new');
+    expect(clicked).toBe(true);
+  });
+
+  it('throws when find and replace button not found', async () => {
+    await expect(adapter.findAndReplace('a', 'b')).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when resolve comment button not found', async () => {
+    await expect(adapter.resolveComment()).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when insert link button not found', async () => {
+    await expect(adapter.insertLink('https://x.com')).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when italic button not found', async () => {
+    await expect(adapter.formatItalic()).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when heading selector not found', async () => {
+    await expect(adapter.formatHeading(2)).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when editor area not found for insertText', async () => {
+    await expect(adapter.insertText('hello')).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when go to beginning element not found', async () => {
+    await expect(adapter.goToBeginning()).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when go to end element not found', async () => {
+    await expect(adapter.goToEnd()).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when share button not found', async () => {
+    await expect(adapter.shareDoc()).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('throws when title input not found for setDocTitle', async () => {
+    await expect(adapter.setDocTitle('New')).rejects.toThrow('Google Docs element not found');
+  });
+
+  it('rejects empty url for insertLink', async () => {
+    await expect(adapter.insertLink('  ')).rejects.toThrow('url must be non-empty');
+  });
+
+  it('rejects heading level 7', async () => {
+    await expect(adapter.formatHeading(7)).rejects.toThrow('heading level must be between 1 and 6');
+  });
 });

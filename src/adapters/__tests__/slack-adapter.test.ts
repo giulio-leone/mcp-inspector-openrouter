@@ -195,4 +195,64 @@ describe('SlackAdapter', () => {
   it('rejects empty emoji', async () => {
     await expect(adapter.addReaction('')).rejects.toThrow('emoji must be non-empty');
   });
+
+  it('rejects empty reply text', async () => {
+    await expect(adapter.replyInThread('')).rejects.toThrow('text must be non-empty');
+  });
+
+  it('rejects empty status', async () => {
+    await expect(adapter.setStatus('')).rejects.toThrow('status must be non-empty');
+  });
+
+  it('rejects empty channel name for createChannel', async () => {
+    await expect(adapter.createChannel('')).rejects.toThrow('name must be non-empty');
+  });
+
+  it('throws when reply in thread button not found', async () => {
+    await expect(adapter.replyInThread('hello')).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when search input not found', async () => {
+    await expect(adapter.searchMessages('test')).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when set status button not found', async () => {
+    await expect(adapter.setStatus('busy')).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when set availability button not found', async () => {
+    await expect(adapter.setAvailability(false)).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when upload file button not found', async () => {
+    await expect(adapter.uploadFile()).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when threads view button not found', async () => {
+    await expect(adapter.goToThreads()).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when DMs view button not found', async () => {
+    await expect(adapter.goToDMs()).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when mentions view button not found', async () => {
+    await expect(adapter.goToMentions()).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when edit message button not found', async () => {
+    await expect(adapter.editLastMessage()).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when delete message button not found', async () => {
+    await expect(adapter.deleteLastMessage()).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when create channel button not found', async () => {
+    await expect(adapter.createChannel('test')).rejects.toThrow('Slack element not found');
+  });
+
+  it('throws when channel not found', async () => {
+    await expect(adapter.switchChannel('nonexistent')).rejects.toThrow('Slack element not found');
+  });
 });
