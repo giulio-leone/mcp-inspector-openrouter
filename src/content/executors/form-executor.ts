@@ -28,6 +28,21 @@ export class FormExecutor extends BaseExecutor {
       const value = parsed.value;
       if (value === undefined) return this.fail('Missing "value" argument for form.fill-*');
 
+      // Radio groups need option lookup by value; the emitted tool is bound
+      // to one radio element but should set the requested option.
+      if (el instanceof HTMLInputElement && el.type === 'radio' && el.name) {
+        const scope = (el.form ?? el.getRootNode()) as ParentNode;
+        const radios = scope.querySelectorAll<HTMLInputElement>(
+          `input[type="radio"][name="${CSS.escape(el.name)}"]`,
+        );
+        const match = Array.from(radios).find((radio) => radio.value === String(value));
+        if (!match) {
+          return this.fail(`Radio option "${String(value)}" not found for group "${el.name}"`);
+        }
+        this.setFieldValue(match, value);
+        return this.ok(`Field "${tool.name}" set to "${String(value)}"`);
+      }
+
       this.setFieldValue(el, value);
 
       return this.ok(`Field "${tool.name}" set to "${String(value)}"`);

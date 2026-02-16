@@ -65,6 +65,39 @@ describe('FormExecutor', () => {
     expect(checkbox.checked).toBe(true);
   });
 
+  it('form.fill-* sets the correct radio option by value for standalone radio group', async () => {
+    const male = document.createElement('input');
+    male.type = 'radio';
+    male.name = 'gender';
+    male.value = 'male';
+    const female = document.createElement('input');
+    female.type = 'radio';
+    female.name = 'gender';
+    female.value = 'female';
+    document.body.append(male, female);
+
+    const tool = makeTool('form.fill-gender', male);
+    const result = await executor.execute(tool, { value: 'female' });
+
+    expect(result.success).toBe(true);
+    expect(male.checked).toBe(false);
+    expect(female.checked).toBe(true);
+  });
+
+  it('form.fill-* returns failure when radio option value does not exist', async () => {
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'tier';
+    radio.value = 'basic';
+    document.body.appendChild(radio);
+
+    const tool = makeTool('form.fill-tier', radio);
+    const result = await executor.execute(tool, { value: 'pro' });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Radio option "pro" not found for group "tier"');
+  });
+
   it('form.fill-* dispatches change event', async () => {
     const input = document.createElement('input');
     input.type = 'text';
