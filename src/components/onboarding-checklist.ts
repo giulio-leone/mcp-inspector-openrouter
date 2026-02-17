@@ -149,7 +149,7 @@ export class OnboardingChecklist extends BaseElement {
       <section class="onboarding-checklist" aria-label="Getting started checklist">
         <div class="onboarding-header">
           <div>
-            <div class="onboarding-title">Get started in 3 quick steps</div>
+            <div class="onboarding-title">Quick start checklist</div>
             <div class="onboarding-progress">${completed}/3 completed</div>
           </div>
           <button type="button" class="onboarding-dismiss" @click=${this._dismiss}>Hide</button>
@@ -157,7 +157,7 @@ export class OnboardingChecklist extends BaseElement {
         <ol class="onboarding-steps">
           ${this._renderStep(
             this._state.message,
-            '💬',
+            '1',
             'Send your first message',
             'Ask what you want to do on this page.',
             'Start now',
@@ -166,7 +166,7 @@ export class OnboardingChecklist extends BaseElement {
           )}
           ${this._renderStep(
             this._state.advanced,
-            '⚙️',
+            '2',
             'Open Advanced settings',
             'Review available actions and page report.',
             'Open',
@@ -175,7 +175,7 @@ export class OnboardingChecklist extends BaseElement {
           )}
           ${this._renderStep(
             this._state.preferences,
-            '🔑',
+            '3',
             'Check your preferences',
             'Make sure your key and model are ready.',
             'Open',
@@ -183,7 +183,7 @@ export class OnboardingChecklist extends BaseElement {
             'open-options',
           )}
         </ol>
-        ${allDone ? html`<div class="onboarding-complete">🎉 You are ready to go.</div>` : nothing}
+        ${allDone ? html`<div class="onboarding-complete">You are ready to go.</div>` : nothing}
       </section>
     `;
   }

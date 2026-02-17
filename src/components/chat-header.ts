@@ -63,20 +63,22 @@ export class ChatHeader extends BaseElement {
   private _renderToolbar(): unknown {
     return html`
       <div class="chat-header">
-        <select @change=${this._onConversationChange}>
-          ${this.conversations.length === 0
-            ? html`<option disabled selected value="">No chats yet</option>`
-            : nothing}
-          ${this.conversations.map(c => html`
-            <option value=${c.id} ?selected=${c.id === this.activeConversationId}>${c.title}</option>
-          `)}
-        </select>
-        <button class="icon-btn" title="Start new chat" @click=${this._onNewChat}>＋</button>
-        <button class="icon-btn danger" title="Delete this chat" @click=${this._onDeleteChat}>🗑</button>
-        <button class="plan-mode-toggle icon-btn ${this.planActive ? 'active' : ''}"
-          title="Guided mode" @click=${this._onTogglePlan}>
-          ${unsafeHTML(ICONS.clipboard)} Guided mode
-        </button>
+        <div class="chat-header-row">
+          <select aria-label="Conversation" @change=${this._onConversationChange}>
+            ${this.conversations.length === 0
+              ? html`<option disabled selected value="">No chats yet</option>`
+              : nothing}
+            ${this.conversations.map(c => html`
+              <option value=${c.id} ?selected=${c.id === this.activeConversationId}>${c.title}</option>
+            `)}
+          </select>
+        </div>
+        <div class="chat-header-actions">
+          <button class="icon-btn ${this.planActive ? 'active' : ''}" title="Guided mode" @click=${this._onTogglePlan}>${unsafeHTML(ICONS.clipboard)}</button>
+          <button class="icon-btn" title="Advanced settings" @click=${this._onToggleAdvanced}>${unsafeHTML(ICONS.sliders)}</button>
+          <button class="icon-btn" title="New chat" @click=${this._onNewChat}>${unsafeHTML(ICONS.edit)}</button>
+          <button class="icon-btn danger" title="Delete chat" @click=${this._onDeleteChat}>${unsafeHTML(ICONS.trash)}</button>
+        </div>
       </div>
     `;
   }
@@ -125,6 +127,13 @@ export class ChatHeader extends BaseElement {
       bubbles: true,
       composed: true,
       detail: { active: this.planActive },
+    }));
+  }
+
+  private _onToggleAdvanced(): void {
+    this.dispatchEvent(new CustomEvent('toggle-advanced', {
+      bubbles: true,
+      composed: true,
     }));
   }
 

@@ -20,25 +20,22 @@
   <chat-header id="chatHeader"></chat-header>
   <onboarding-checklist id="onboardingChecklist"></onboarding-checklist>
   <section class="chat-advanced" id="chatAdvancedSection" hidden>
-    <details class="chat-advanced-details" id="chatAdvancedDetails">
-      <summary>Advanced settings</summary>
-      <div class="chat-advanced-body">
-        <div class="section-header-row">
-          <div class="lock-toggle">
-            <label class="toggle-switch">
-              <input type="checkbox" id="lockToggle">
-              <span class="toggle-slider"></span>
-            </label>
-            <span id="lockLabel" class="lock-label live">🔓 Ready</span>
-          </div>
+    <div class="chat-advanced-body" id="chatAdvancedDetails">
+      <div class="section-header-row">
+        <div class="lock-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="lockToggle" aria-labelledby="lockLabel">
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="lockLabel" class="lock-label live">🔓 Ready</span>
         </div>
-        <status-bar id="statusBar"></status-bar>
-        <p>Site action manifest</p>
-        <manifest-dashboard id="manifestDashboard"></manifest-dashboard>
-        <p>Available actions</p>
-        <tool-table id="toolTable"></tool-table>
       </div>
-    </details>
+      <status-bar id="statusBar"></status-bar>
+      <p>Site action manifest</p>
+      <manifest-dashboard id="manifestDashboard"></manifest-dashboard>
+      <p>Available actions</p>
+      <tool-table id="toolTable"></tool-table>
+    </div>
   </section>
 
   <!-- Chat bubbles -->

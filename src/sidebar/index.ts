@@ -40,7 +40,6 @@ const chatHeader = $<ChatHeader>('chatHeader');
 const chatInput = $<ChatInput>('chatInput');
 const onboardingChecklist = $<OnboardingChecklist>('onboardingChecklist');
 const chatAdvancedSection = $<HTMLElement>('chatAdvancedSection');
-const chatAdvancedDetails = $<HTMLDetailsElement>('chatAdvancedDetails');
 const sessionIndicator = $<TabSessionIndicator>('sessionIndicator');
 const manifestDashboard = $<ManifestDashboard>('manifestDashboard');
 const CHAT_ADVANCED_FLAG_KEY = 'wmcp_chat_advanced_enabled';
@@ -59,13 +58,6 @@ window.addEventListener('storage', (e) => {
 // Shared tab session adapter — tracks per-browser-tab context
 const tabSession = new TabSessionAdapter();
 tabSession.startSession();
-
-chatAdvancedDetails.addEventListener('toggle', () => {
-  if (chatAdvancedDetails.open) {
-    onboardingChecklist.markAdvancedOpened();
-    void loadManifest();
-  }
-});
 
 // ── Manifest dashboard wiring ──
 
@@ -169,13 +161,20 @@ chatHeader.addEventListener('open-options', () => {
   onboardingChecklist.markPreferencesOpened();
   chrome.runtime.openOptionsPage();
 });
+chatHeader.addEventListener('toggle-advanced', () => {
+  chatAdvancedSection.hidden = !chatAdvancedSection.hidden;
+  if (!chatAdvancedSection.hidden) {
+    onboardingChecklist.markAdvancedOpened();
+    void loadManifest();
+  }
+});
 onboardingChecklist.addEventListener('onboarding-focus-input', () => {
   chatInput.focus();
 });
 onboardingChecklist.addEventListener('onboarding-open-advanced', () => {
   chatAdvancedSection.hidden = false;
-  chatAdvancedDetails.open = true;
   onboardingChecklist.markAdvancedOpened();
+  void loadManifest();
 });
 onboardingChecklist.addEventListener('onboarding-open-options', () => {
   onboardingChecklist.markPreferencesOpened();
@@ -209,15 +208,6 @@ chatInput.addEventListener('apply-preset', ((e: CustomEvent<{ prompt: string }>)
   chatInput.syncState();
   chatInput.focus();
 }) as EventListener);
-chatInput.addEventListener('copy-trace', async (): Promise<void> => {
-  await navigator.clipboard.writeText(JSON.stringify(convCtrl.state.trace, null, ' '));
-});
-
-// Debug log download
-import { logger } from './debug-logger';
-chatInput.addEventListener('download-debug-log', (): void => {
-  logger.download();
-});
 
 // Helper: update session indicator UI
 function updateSessionIndicator(activeTabId?: number): void {

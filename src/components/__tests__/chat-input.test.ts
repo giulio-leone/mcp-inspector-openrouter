@@ -155,30 +155,6 @@ describe('ChatInput', () => {
     expect(sent).toBe(false);
   });
 
-  it('_onCopyTrace dispatches copy-trace', async () => {
-    el = await createElement();
-
-    const received = new Promise<CustomEvent>(resolve => {
-      el.addEventListener('copy-trace', (e) => resolve(e as CustomEvent), { once: true });
-    });
-
-    (el as any)._onCopyTrace();
-    const event = await received;
-    expect(event.type).toBe('copy-trace');
-  });
-
-  it('_onDownloadDebug dispatches download-debug-log', async () => {
-    el = await createElement();
-
-    const received = new Promise<CustomEvent>(resolve => {
-      el.addEventListener('download-debug-log', (e) => resolve(e as CustomEvent), { once: true });
-    });
-
-    (el as any)._onDownloadDebug();
-    const event = await received;
-    expect(event.type).toBe('download-debug-log');
-  });
-
   it('dispatches apply-preset when preset button is clicked', async () => {
     el = await createElement({ presets: ['Summarize this page'] });
     await el.updateComplete;

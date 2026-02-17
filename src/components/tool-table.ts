@@ -189,9 +189,9 @@ export class ToolTable extends BaseElement {
         </table>
         ${hasTools ? html`
           <div class="copy-to-clipboard" role="group" aria-label="Action export controls">
-            <button type="button" class="copy-action" @click=${this._onCopyScript}>📝 Copy for setup</button>
-            <button type="button" class="copy-action" @click=${this._onCopyJson}>📝 Copy as data</button>
-            <button type="button" class="copy-action" @click=${this._onExportManifest}>📦 Download page action report</button>
+            <button type="button" class="copy-action" @click=${this._onCopyScript}>Copy for setup</button>
+            <button type="button" class="copy-action" @click=${this._onCopyJson}>Copy as data</button>
+            <button type="button" class="copy-action" @click=${this._onExportManifest}>Download report</button>
           </div>` : nothing}
       </div>`;
   }

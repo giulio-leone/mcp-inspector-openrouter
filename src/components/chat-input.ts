@@ -1,5 +1,5 @@
 /**
- * <chat-input> — Sticky chat input area with send button and action buttons.
+ * <chat-input> — Sticky chat input area with send button.
  * Uses Light DOM so existing CSS targets (.chat-input-area, .chat-input-row, etc.) apply.
  */
 import { html } from 'lit';
@@ -91,20 +91,17 @@ export class ChatInput extends BaseElement {
         : null}
       <div class="chat-input-row">
         <textarea
+          aria-label="Message"
           placeholder=${this.placeholder}
-          rows="2"
+          rows="1"
           @input=${this._onInput}
           @keydown=${this._onKeydown}
         ></textarea>
         <button
-          title="Send message"
+          title="Send"
           ?disabled=${this.disabled || !this._hasContent}
           @click=${this._onSend}
-        >▶</button>
-      </div>
-      <div class="chat-input-actions">
-        <button class="secondary small" @click=${this._onCopyTrace}>Copy conversation details</button>
-        <button class="secondary small" title="Download support file" @click=${this._onDownloadDebug}>🐛 Support file</button>
+        >↑</button>
       </div>
     `;
   }
@@ -138,20 +135,6 @@ export class ChatInput extends BaseElement {
       detail: { message },
     }));
     this.clear();
-  }
-
-  private _onCopyTrace(): void {
-    this.dispatchEvent(new CustomEvent('copy-trace', {
-      bubbles: true,
-      composed: true,
-    }));
-  }
-
-  private _onDownloadDebug(): void {
-    this.dispatchEvent(new CustomEvent('download-debug-log', {
-      bubbles: true,
-      composed: true,
-    }));
   }
 
   private _onPresetClick(e: Event): void {

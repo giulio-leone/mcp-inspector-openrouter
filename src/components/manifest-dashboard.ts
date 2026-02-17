@@ -115,9 +115,9 @@ export class ManifestDashboard extends BaseElement {
 
         <div class="manifest-actions">
           <button class="manifest-btn" @click=${this._onCopy}>
-            ${this._copyFeedback ? '✓ Copied' : '📋 Copy report'}
+            ${this._copyFeedback ? 'Copied' : 'Copy report'}
           </button>
-          <button class="manifest-btn" @click=${this._onRefresh}>🔄 Scan again</button>
+          <button class="manifest-btn" @click=${this._onRefresh}>Scan again</button>
         </div>
 
         <div class="manifest-search">

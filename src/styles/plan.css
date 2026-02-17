@@ -7,7 +7,7 @@
   margin: 8px 0;
   overflow: hidden;
   font-size: 12px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-xs);
   animation: plan-appear 0.3s ease-out;
 }
 
@@ -25,21 +25,22 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: linear-gradient(135deg, var(--color-brand-500), #4f86f7);
-  color: #fff;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-default);
   cursor: default;
 }
 
 .plan-icon {
   font-size: 16px;
-  filter: brightness(1.2);
+  color: var(--color-brand-500);
 }
 
 .plan-goal {
   flex: 1;
   font-weight: 700;
   font-size: 12px;
-  color: #fff;
+  color: var(--color-text-primary);
 }
 
 .plan-status-badge {
@@ -47,18 +48,18 @@
 }
 
 .plan-toggle-btn {
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
+  background: transparent;
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 10px;
   padding: 3px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
   transition: background var(--motion-fast);
 }
 
 .plan-toggle-btn:hover {
-  background: rgba(255,255,255,0.25);
+  background: var(--color-surface-card);
 }
 
 .plan-steps {
@@ -140,13 +141,13 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border-radius: 14px;
+  padding: 6px 12px;
+  border-radius: 16px;
   border: 1px solid var(--color-border-default);
   background: var(--color-surface-card);
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-family: var(--font);
   transition: all var(--motion-base);
@@ -158,10 +159,10 @@
 }
 
 .plan-mode-toggle.active {
-  background: linear-gradient(135deg, var(--color-brand-500), #4f86f7);
+  background: var(--color-brand-500);
   color: white;
   border-color: var(--color-brand-500);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: var(--shadow-xs);
 }
 
 .plan-mode-toggle .toggle-icon {
@@ -180,10 +181,6 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-  .plan-header {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-  }
-
   .plan-step--in_progress {
     background: rgba(59, 130, 246, 0.08);
     border-left-color: #3b82f6;
@@ -199,8 +196,8 @@
   }
 
   .plan-mode-toggle.active {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    background: var(--color-brand-500);
+    box-shadow: var(--shadow-xs);
   }
 }
 
