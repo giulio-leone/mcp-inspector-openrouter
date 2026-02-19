@@ -1,5 +1,5 @@
 /**
- * <chat-input> — Sticky chat input area with send button and action buttons.
+ * <chat-input> — Sticky chat input area with send button.
  * Uses Light DOM so existing CSS targets (.chat-input-area, .chat-input-row, etc.) apply.
  */
 import { html } from 'lit';
@@ -9,17 +9,20 @@ export class ChatInput extends BaseElement {
   static properties = {
     disabled: { type: Boolean },
     placeholder: { type: String },
+    presets: { type: Array },
     _hasContent: { type: Boolean, state: true },
   };
 
   declare disabled: boolean;
   declare placeholder: string;
+  declare presets: string[];
   declare _hasContent: boolean;
 
   constructor() {
     super();
     this.disabled = false;
-    this.placeholder = 'Send a message...';
+    this.placeholder = 'Type your question...';
+    this.presets = [];
     this._hasContent = false;
   }
 
@@ -58,6 +61,10 @@ export class ChatInput extends BaseElement {
     this.querySelector('textarea')?.focus();
   }
 
+  setPresets(presets: string[]): void {
+    this.presets = presets;
+  }
+
   /** Clears the textarea and resets state. */
   clear(): void {
     const ta = this.querySelector('textarea');
@@ -70,10 +77,23 @@ export class ChatInput extends BaseElement {
 
   override render(): unknown {
     return html`
+      ${this.presets.length > 0
+        ? html`<div class="chat-presets">
+            ${this.presets.map((preset, index) => html`
+              <button
+                type="button"
+                class="chat-preset-btn secondary small"
+                data-preset-index=${index}
+                @click=${this._onPresetClick}
+              >${preset}</button>
+            `)}
+          </div>`
+        : null}
       <div class="chat-input-row">
         <textarea
+          aria-label="Message"
           placeholder=${this.placeholder}
-          rows="2"
+          rows="1"
           @input=${this._onInput}
           @keydown=${this._onKeydown}
         ></textarea>
@@ -81,11 +101,7 @@ export class ChatInput extends BaseElement {
           title="Send"
           ?disabled=${this.disabled || !this._hasContent}
           @click=${this._onSend}
-        >▶</button>
-      </div>
-      <div class="chat-input-actions">
-        <button class="secondary small" @click=${this._onCopyTrace}>Copy trace</button>
-        <button class="secondary small" title="Download debug log" @click=${this._onDownloadDebug}>🐛 Debug log</button>
+        >↑</button>
       </div>
     `;
   }
@@ -121,17 +137,15 @@ export class ChatInput extends BaseElement {
     this.clear();
   }
 
-  private _onCopyTrace(): void {
-    this.dispatchEvent(new CustomEvent('copy-trace', {
+  private _onPresetClick(e: Event): void {
+    const button = e.currentTarget as HTMLButtonElement | null;
+    const index = Number(button?.dataset.presetIndex ?? '-1');
+    const prompt = this.presets[index];
+    if (!prompt) return;
+    this.dispatchEvent(new CustomEvent('apply-preset', {
       bubbles: true,
       composed: true,
-    }));
-  }
-
-  private _onDownloadDebug(): void {
-    this.dispatchEvent(new CustomEvent('download-debug-log', {
-      bubbles: true,
-      composed: true,
+      detail: { prompt },
     }));
   }
 }

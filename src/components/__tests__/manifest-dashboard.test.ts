@@ -50,12 +50,12 @@ describe('ManifestDashboard', () => {
 
   it('shows empty message when no manifest', async () => {
     el = await createElement();
-    expect(el.textContent).toContain('No manifest available');
+    expect(el.textContent).toContain('No page action report yet');
   });
 
   it('shows loading state', async () => {
     el = await createElement({ loading: true });
-    expect(el.textContent).toContain('Loading manifest');
+    expect(el.textContent).toContain('Scanning this page');
   });
 
   it('shows error message', async () => {
@@ -115,7 +115,7 @@ describe('ManifestDashboard', () => {
     input.dispatchEvent(new Event('input'));
     await el.updateComplete;
     await new Promise(r => setTimeout(r, 0));
-    expect(el.textContent).toContain('No tools match');
+    expect(el.textContent).toContain('No actions match');
   });
 
   it('dispatches copy-manifest event', async () => {
@@ -132,7 +132,7 @@ describe('ManifestDashboard', () => {
     el = await createElement({ manifestJson: SAMPLE_MANIFEST });
     const handler = vi.fn();
     el.addEventListener('refresh-manifest', handler);
-    const btn = [...el.querySelectorAll('.manifest-btn')].find(b => b.textContent?.includes('Refresh'));
+    const btn = [...el.querySelectorAll('.manifest-btn')].find(b => b.textContent?.includes('Scan again'));
     expect(btn).toBeTruthy();
     (btn as HTMLElement).click();
     expect(handler).toHaveBeenCalledTimes(1);
@@ -144,7 +144,7 @@ describe('ManifestDashboard', () => {
     (btn as HTMLElement).click();
     await el.updateComplete;
     await new Promise(r => setTimeout(r, 0));
-    expect(el.textContent).toContain('Copied!');
+    expect(el.textContent).toContain('Copied');
   });
 
   it('renders action buttons', async () => {
@@ -155,6 +155,6 @@ describe('ManifestDashboard', () => {
 
   it('handles malformed JSON gracefully', async () => {
     el = await createElement({ manifestJson: '{invalid json' });
-    expect(el.textContent).toContain('No manifest available');
+    expect(el.textContent).toContain('No page action report yet');
   });
 });

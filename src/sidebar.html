@@ -7,7 +7,7 @@
 <html>
 
 <head>
-  <title>Tool Inspector</title>
+  <title>MCP Assistant</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="styles.css" />
@@ -15,40 +15,32 @@
 
 <body>
 <theme-provider>
-  <!-- Tab bar -->
-  <tab-navigator id="tabNavigator" activeTab="tools"></tab-navigator>
   <tab-session-indicator id="sessionIndicator"></tab-session-indicator>
 
-  <!-- ═══ Tools tab ═══ -->
-  <div class="tab-panel active" id="tab-tools">
-    <div class="section-header-row">
-      <div class="lock-toggle">
-        <label class="toggle-switch">
-          <input type="checkbox" id="lockToggle">
-          <span class="toggle-slider"></span>
-        </label>
-        <span id="lockLabel" class="lock-label live">🔓 Live</span>
+  <chat-header id="chatHeader"></chat-header>
+  <onboarding-checklist id="onboardingChecklist"></onboarding-checklist>
+  <section class="chat-advanced" id="chatAdvancedSection" hidden>
+    <div class="chat-advanced-body" id="chatAdvancedDetails">
+      <div class="section-header-row">
+        <div class="lock-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="lockToggle" aria-labelledby="lockLabel">
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="lockLabel" class="lock-label live">🔓 Ready</span>
+        </div>
       </div>
+      <status-bar id="statusBar"></status-bar>
+      <p>Site action manifest</p>
+      <manifest-dashboard id="manifestDashboard"></manifest-dashboard>
+      <p>Available actions</p>
+      <tool-table id="toolTable"></tool-table>
     </div>
+  </section>
 
-    <status-bar id="statusBar"></status-bar>
-    <tool-table id="toolTable"></tool-table>
-  </div>
-
-  <!-- ═══ Manifest tab ═══ -->
-  <div class="tab-panel" id="tab-manifest">
-    <manifest-dashboard id="manifestDashboard"></manifest-dashboard>
-  </div>
-
-  <!-- ═══ Chat tab ═══ -->
-  <div class="tab-panel" id="tab-chat">
-    <chat-header id="chatHeader"></chat-header>
-
-    <!-- Chat bubbles -->
-    <chat-container id="chatContainer"></chat-container>
-
-    <chat-input id="chatInput"></chat-input>
-  </div>
+  <!-- Chat bubbles -->
+  <chat-container id="chatContainer"></chat-container>
+  <chat-input id="chatInput"></chat-input>
 
   <!-- Security confirmation dialog for mutation-tier inferred tools -->
   <security-dialog id="securityDialog"></security-dialog>

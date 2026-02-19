@@ -44,7 +44,7 @@ describe('SecurityDialog', () => {
     expect(title!.textContent).toContain('form.submit');
     const desc = el.querySelector('.dialog-desc');
     expect(desc).toBeTruthy();
-    expect(desc!.textContent).toContain('mutation');
+    expect(desc!.textContent).toContain('change data on this page');
   });
 
   it('is hidden when not open', async () => {

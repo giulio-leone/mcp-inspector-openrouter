@@ -27,7 +27,7 @@ export class ReasoningAccordion extends BaseElement {
   protected override render(): unknown {
     return html`
       <details class="reasoning-accordion">
-        <summary class="reasoning-summary">${unsafeHTML(ICONS.brain)} <span>Reasoning</span></summary>
+        <summary class="reasoning-summary">${unsafeHTML(ICONS.brain)} <span>How I worked this out</span></summary>
         <div class="reasoning-body">${this.content}</div>
       </details>
     `;

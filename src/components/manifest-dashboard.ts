@@ -86,7 +86,7 @@ export class ManifestDashboard extends BaseElement {
 
   override render(): unknown {
     if (this.loading) {
-      return html`<div class="manifest-dashboard"><p class="manifest-loading">Loading manifest…</p></div>`;
+      return html`<div class="manifest-dashboard"><p class="manifest-loading">Scanning this page…</p></div>`;
     }
 
     if (this.error) {
@@ -95,7 +95,7 @@ export class ManifestDashboard extends BaseElement {
 
     const manifest = this._parsed();
     if (!manifest) {
-      return html`<div class="manifest-dashboard"><p class="manifest-empty">No manifest available. Click Refresh to scan.</p></div>`;
+      return html`<div class="manifest-dashboard"><p class="manifest-empty">No page action report yet. Click Scan again.</p></div>`;
     }
 
     const meta = manifest._meta;
@@ -105,33 +105,33 @@ export class ManifestDashboard extends BaseElement {
       <div class="manifest-dashboard">
         ${meta ? html`
           <div class="manifest-meta">
-            <div class="manifest-meta-row"><strong>Origin:</strong> <span>${meta.origin}</span></div>
-            <div class="manifest-meta-row"><strong>Tools:</strong> <span>${meta.toolCount}</span></div>
-            <div class="manifest-meta-row"><strong>Pages:</strong> <span>${meta.pageCount}</span></div>
-            <div class="manifest-meta-row"><strong>Updated:</strong> <span>${this._formatTime(meta.generatedAt)}</span></div>
-            <div class="manifest-meta-row"><strong>Version:</strong> <span>${meta.version}</span></div>
+            <div class="manifest-meta-row"><strong>Website:</strong> <span>${meta.origin}</span></div>
+            <div class="manifest-meta-row"><strong>Actions:</strong> <span>${meta.toolCount}</span></div>
+            <div class="manifest-meta-row"><strong>Pages found:</strong> <span>${meta.pageCount}</span></div>
+            <div class="manifest-meta-row"><strong>Last scan:</strong> <span>${this._formatTime(meta.generatedAt)}</span></div>
+            <div class="manifest-meta-row"><strong>Report version:</strong> <span>${meta.version}</span></div>
           </div>
         ` : nothing}
 
         <div class="manifest-actions">
           <button class="manifest-btn" @click=${this._onCopy}>
-            ${this._copyFeedback ? '✓ Copied!' : '📋 Copy JSON'}
+            ${this._copyFeedback ? 'Copied' : 'Copy report'}
           </button>
-          <button class="manifest-btn" @click=${this._onRefresh}>🔄 Refresh</button>
+          <button class="manifest-btn" @click=${this._onRefresh}>Scan again</button>
         </div>
 
         <div class="manifest-search">
           <input
             type="text"
             class="manifest-search-input"
-            placeholder="Filter tools…"
+            placeholder="Search actions…"
             .value=${this._filter}
             @input=${this._onFilterChange}
           />
         </div>
 
         ${tools.length === 0
-          ? html`<p class="manifest-empty">No tools match "${this._filter}"</p>`
+          ? html`<p class="manifest-empty">No actions match "${this._filter}"</p>`
           : html`
             <div class="manifest-tool-list">
               ${tools.map(t => this._renderTool(t))}

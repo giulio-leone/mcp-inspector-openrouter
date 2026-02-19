@@ -78,12 +78,12 @@ saveTestBtn.onclick = async (): Promise<void> => {
   const model = modelSelect.value.trim() || DEFAULT_MODEL;
 
   if (!apiKey) {
-    connectionStatus.textContent = '❌ Please enter an API key';
+    connectionStatus.textContent = '❌ Add your OpenRouter key';
     connectionStatus.className = 'status-message status-error';
     return;
   }
 
-  connectionStatus.textContent = '⏳ Testing connection...';
+  connectionStatus.textContent = '⏳ Checking connection...';
   connectionStatus.className = 'status-message';
   saveTestBtn.disabled = true;
 
@@ -109,7 +109,7 @@ saveTestBtn.onclick = async (): Promise<void> => {
     }
 
     connectionStatus.textContent =
-      '✅ Connection successful & settings saved!';
+      '✅ Connected. Preferences saved.';
     connectionStatus.className = 'status-message status-success';
   } catch (error) {
     connectionStatus.textContent = `❌ Connection failed: ${(error as Error).message}`;

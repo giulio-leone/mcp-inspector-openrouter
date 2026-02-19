@@ -6,8 +6,8 @@
   display: flex;
   gap: 4px;
   padding: 8px 10px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
+  background: var(--color-surface-card);
+  border-bottom: 1px solid var(--color-border-default);
   box-shadow: var(--shadow-xs);
 }
 
@@ -17,22 +17,22 @@
   border: none;
   border-radius: 20px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-family: var(--font);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all var(--motion-base);
   letter-spacing: 0.01em;
 }
 
 .tab-btn:hover {
-  background: var(--bg-elevated);
-  color: var(--text);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
 }
 
 .tab-btn.active {
-  background: var(--primary);
+  background: var(--color-brand-500);
   color: #fff;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
@@ -43,10 +43,10 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
+  background: var(--color-surface-elevated);
+  border-bottom: 1px solid var(--color-border-default);
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   animation: panel-in 0.2s ease-out;
 }
 
@@ -58,7 +58,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--primary);
+  background: var(--color-brand-500);
   color: #fff;
   font-size: 10px;
   font-weight: 700;

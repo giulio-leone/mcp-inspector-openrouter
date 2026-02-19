@@ -79,8 +79,9 @@ export class ChatContainer extends BaseElement {
 
   protected override render(): unknown {
     const now = Date.now();
+    const merged = this._mergeToolPairs(this.messages);
     return html`
-      ${this.messages.map((msg, i) => html`
+      ${merged.map((msg, i) => html`
         <chat-bubble
           .role=${msg.role}
           .content=${msg.content}
@@ -89,12 +90,39 @@ export class ChatContainer extends BaseElement {
           .toolArgs=${msg.args ?? {}}
           .reasoning=${msg.reasoning ?? ''}
           .editable=${this.editable}
-          .index=${i}
+          .index=${msg._origIndex ?? i}
           @bubble-edit=${this._onBubbleEdit}
           @bubble-delete=${this._onBubbleDelete}
         ></chat-bubble>
       `)}
     `;
+  }
+
+  /** Merge consecutive tool_call + tool_result/tool_error into a single resolved step */
+  private _mergeToolPairs(msgs: Message[]): (Message & { _origIndex?: number })[] {
+    const result: (Message & { _origIndex?: number })[] = [];
+    let i = 0;
+    while (i < msgs.length) {
+      const curr = msgs[i];
+      const next = msgs[i + 1];
+      if (
+        curr.role === 'tool_call' &&
+        next &&
+        (next.role === 'tool_result' || next.role === 'tool_error') &&
+        curr.tool === next.tool
+      ) {
+        result.push({
+          ...next,
+          args: curr.args,
+          _origIndex: i,
+        });
+        i += 2;
+      } else {
+        result.push({ ...curr, _origIndex: i });
+        i += 1;
+      }
+    }
+    return result;
   }
 }
 

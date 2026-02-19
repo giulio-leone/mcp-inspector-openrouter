@@ -7,7 +7,7 @@
 <html>
 
 <head>
-  <title>MCP Inspector Settings</title>
+  <title>MCP Inspector Preferences</title>
   <meta charset="utf-8">
   <style>
     :root {
@@ -164,39 +164,39 @@
 <body>
   <div class="options-header">
     <span style="font-size:22px">⚙️</span>
-    <h1>MCP Inspector Settings</h1>
+    <h1>MCP Inspector Preferences</h1>
   </div>
 
   <div class="card">
-    <div class="card-title">API Configuration</div>
+    <div class="card-title">Connection</div>
     <div class="form-group">
-      <label for="apiKey">OpenRouter API Key</label>
+      <label for="apiKey">OpenRouter key</label>
       <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
     </div>
     <div class="form-group">
-      <button id="saveTestBtn">Save & Test Connection</button>
+      <button id="saveTestBtn">Save and check connection</button>
       <div id="connectionStatus" class="status-message"></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">Model</div>
+    <div class="card-title">AI model</div>
     <div class="form-group">
-      <label for="modelSelect">Default Model</label>
+      <label for="modelSelect">Preferred model</label>
       <input type="text" id="modelSelect" list="modelList" placeholder="e.g. google/gemini-2.0-flash-001" />
       <datalist id="modelList"></datalist>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">Features</div>
+    <div class="card-title">Experience</div>
     <div class="form-group" style="display:flex;align-items:center;gap:8px;">
       <input type="checkbox" id="yoloToggle" style="width:auto;" checked />
-      <label for="yoloToggle" style="margin-bottom:0;cursor:pointer;">⚡ YOLO Mode — auto-execute all tools without confirmation</label>
+      <label for="yoloToggle" style="margin-bottom:0;cursor:pointer;">⚡ Quick run mode — run actions automatically (no confirmation)</label>
     </div>
     <div class="form-group" style="display:flex;align-items:center;gap:8px;">
       <input type="checkbox" id="screenshotToggle" style="width:auto;" />
-      <label for="screenshotToggle" style="margin-bottom:0;cursor:pointer;">Enable screenshot with AI messages</label>
+      <label for="screenshotToggle" style="margin-bottom:0;cursor:pointer;">Include screenshot with AI replies</label>
     </div>
   </div>
 

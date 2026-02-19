@@ -67,7 +67,7 @@ export function showApprovalDialog(
     dialogEl.show({
       toolName,
       securityTier: tier,
-      details: `This tool performs a ${tier === 2 ? 'mutation' : 'navigation'} action: ${toolName}. Allow execution?`,
+      details: `This action may ${tier === 2 ? 'change data on this page' : 'move around the page'}: ${toolName}. Allow it?`,
     });
   });
 }

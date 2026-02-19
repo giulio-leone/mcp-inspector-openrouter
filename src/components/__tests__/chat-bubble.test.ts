@@ -69,10 +69,10 @@ describe('ChatBubble', () => {
     el = await createBubble({ role: 'ai', content: '', reasoning: 'Deep thought' });
     const notice = el.querySelector('.reasoning-notice');
     expect(notice).toBeTruthy();
-    expect(notice!.textContent).toContain('reasoning');
+    expect(notice!.textContent).toContain('thinking steps');
   });
 
-  it('renders tool_call bubble with tool name and args', async () => {
+  it('renders tool_call bubble as action step with tool name', async () => {
     el = await createBubble({
       role: 'tool_call',
       content: '',
@@ -80,41 +80,41 @@ describe('ChatBubble', () => {
       toolArgs: { query: 'test' },
     });
     expect(el.className).toBe('bubble bubble-tool_call');
-    const body = el.querySelector('.bubble-body');
-    expect(body!.textContent).toContain('search');
-    expect(body!.querySelector('code')!.textContent).toContain('"query"');
+    const step = el.querySelector('.action-step--running');
+    expect(step).toBeTruthy();
+    expect(step!.textContent).toContain('Search');
   });
 
-  it('renders tool_result bubble with result', async () => {
+  it('renders tool_result bubble as completed action step', async () => {
     el = await createBubble({
       role: 'tool_result',
       content: 'found 3 results',
       toolName: 'search',
     });
     expect(el.className).toBe('bubble bubble-tool_result');
-    const body = el.querySelector('.bubble-body');
-    expect(body!.textContent).toContain('search');
-    expect(body!.textContent).toContain('found 3 results');
+    const step = el.querySelector('.action-step--done');
+    expect(step).toBeTruthy();
+    expect(step!.textContent).toContain('found 3 results');
   });
 
-  it('renders tool_error bubble with error', async () => {
+  it('renders tool_error bubble as error action step', async () => {
     el = await createBubble({
       role: 'tool_error',
       content: 'timeout',
       toolName: 'fetch',
     });
     expect(el.className).toBe('bubble bubble-tool_error');
-    const body = el.querySelector('.bubble-body');
-    expect(body!.textContent).toContain('fetch');
-    expect(body!.textContent).toContain('timeout');
+    const step = el.querySelector('.action-step--error');
+    expect(step).toBeTruthy();
+    expect(step!.textContent).toContain('timeout');
   });
 
-  it('renders error bubble with alert icon', async () => {
+  it('renders error bubble as error action step with message', async () => {
     el = await createBubble({ role: 'error', content: 'Something went wrong' });
     expect(el.className).toBe('bubble bubble-error');
-    const body = el.querySelector('.bubble-body');
-    expect(body!.textContent).toContain('Something went wrong');
-    expect(body!.querySelector('.tool-icon')).toBeTruthy();
+    const step = el.querySelector('.action-step--error');
+    expect(step).toBeTruthy();
+    expect(step!.textContent).toContain('Something went wrong');
   });
 
   it('displays formatted timestamp', async () => {

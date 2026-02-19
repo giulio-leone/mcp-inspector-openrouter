@@ -51,7 +51,7 @@ describe('ChatInput', () => {
     el = await createElement();
     expect(el.disabled).toBe(false);
     expect(el.value).toBe('');
-    expect(el.placeholder).toBe('Send a message...');
+    expect(el.placeholder).toBe('Type your question...');
     expect(el.classList.contains('chat-input-area')).toBe(true);
   });
 
@@ -155,27 +155,18 @@ describe('ChatInput', () => {
     expect(sent).toBe(false);
   });
 
-  it('_onCopyTrace dispatches copy-trace', async () => {
-    el = await createElement();
+  it('dispatches apply-preset when preset button is clicked', async () => {
+    el = await createElement({ presets: ['Summarize this page'] });
+    await el.updateComplete;
+    await new Promise(r => setTimeout(r, 0));
 
     const received = new Promise<CustomEvent>(resolve => {
-      el.addEventListener('copy-trace', (e) => resolve(e as CustomEvent), { once: true });
+      el.addEventListener('apply-preset', (e) => resolve(e as CustomEvent), { once: true });
     });
 
-    (el as any)._onCopyTrace();
+    (el as any)._onPresetClick({ currentTarget: { dataset: { presetIndex: '0' } } } as Event);
+
     const event = await received;
-    expect(event.type).toBe('copy-trace');
-  });
-
-  it('_onDownloadDebug dispatches download-debug-log', async () => {
-    el = await createElement();
-
-    const received = new Promise<CustomEvent>(resolve => {
-      el.addEventListener('download-debug-log', (e) => resolve(e as CustomEvent), { once: true });
-    });
-
-    (el as any)._onDownloadDebug();
-    const event = await received;
-    expect(event.type).toBe('download-debug-log');
+    expect(event.detail.prompt).toBe('Summarize this page');
   });
 });

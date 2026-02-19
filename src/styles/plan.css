@@ -1,13 +1,13 @@
 /* ── Plan Mode ── */
 .plan-block {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-3);
   padding: 0;
   margin: 8px 0;
   overflow: hidden;
   font-size: 12px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-xs);
   animation: plan-appear 0.3s ease-out;
 }
 
@@ -25,21 +25,22 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: linear-gradient(135deg, var(--primary), #4f86f7);
-  color: #fff;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-default);
   cursor: default;
 }
 
 .plan-icon {
   font-size: 16px;
-  filter: brightness(1.2);
+  color: var(--color-brand-500);
 }
 
 .plan-goal {
   flex: 1;
   font-weight: 700;
   font-size: 12px;
-  color: #fff;
+  color: var(--color-text-primary);
 }
 
 .plan-status-badge {
@@ -47,18 +48,18 @@
 }
 
 .plan-toggle-btn {
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: #fff;
+  background: transparent;
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 10px;
   padding: 3px 6px;
-  border-radius: 4px;
-  transition: background var(--transition-fast);
+  border-radius: var(--radius-1);
+  transition: background var(--motion-fast);
 }
 
 .plan-toggle-btn:hover {
-  background: rgba(255,255,255,0.25);
+  background: var(--color-surface-card);
 }
 
 .plan-steps {
@@ -74,17 +75,17 @@
 }
 
 .plan-step--done .plan-step-title {
-  color: var(--success);
+  color: var(--color-success);
 }
 
 .plan-step--failed .plan-step-title {
   text-decoration: line-through;
-  color: var(--error);
+  color: var(--color-error);
 }
 
 .plan-step--in_progress {
   background: var(--primary-soft);
-  border-left: 2px solid var(--primary);
+  border-left: 2px solid var(--color-brand-500);
 }
 
 .plan-step-row {
@@ -92,7 +93,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  transition: background var(--transition-fast);
+  transition: background var(--motion-fast);
 }
 
 .plan-step-row:hover {
@@ -113,25 +114,25 @@
 
 .plan-step-title {
   font-size: 11.5px;
-  color: var(--text);
+  color: var(--color-text-primary);
   transition: color 0.3s ease;
 }
 
 .plan-step-detail {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   margin-left: auto;
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: var(--bg-elevated);
+  background: var(--color-surface-elevated);
   padding: 1px 6px;
   border-radius: 8px;
 }
 
 .plan-step-children {
-  border-left: 2px dashed var(--border);
+  border-left: 2px dashed var(--color-border-default);
   margin-left: 18px;
 }
 
@@ -140,28 +141,28 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border-default);
+  background: var(--color-surface-card);
+  color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-family: var(--font);
-  transition: all var(--transition);
+  transition: all var(--motion-base);
 }
 
 .plan-mode-toggle:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: var(--color-brand-500);
+  color: var(--color-brand-500);
 }
 
 .plan-mode-toggle.active {
-  background: linear-gradient(135deg, var(--primary), #4f86f7);
+  background: var(--color-brand-500);
   color: white;
-  border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  border-color: var(--color-brand-500);
+  box-shadow: var(--shadow-xs);
 }
 
 .plan-mode-toggle .toggle-icon {
@@ -180,10 +181,6 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-  .plan-header {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-  }
-
   .plan-step--in_progress {
     background: rgba(59, 130, 246, 0.08);
     border-left-color: #3b82f6;
@@ -199,8 +196,8 @@
   }
 
   .plan-mode-toggle.active {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    background: var(--color-brand-500);
+    box-shadow: var(--shadow-xs);
   }
 }
 

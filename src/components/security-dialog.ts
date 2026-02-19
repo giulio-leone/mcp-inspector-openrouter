@@ -90,10 +90,12 @@ export class SecurityDialog extends LitElement {
   protected override render(): unknown {
     if (!this.open) return nothing;
 
-    const tierLabel = this.securityTier === 2 ? 'mutation' : 'navigation';
+    const actionLabel = this.securityTier === 2
+      ? 'change data on this page'
+      : 'move to another page area';
     const description =
       this.details ||
-      `This tool performs a ${tierLabel} action: ${this.toolName}. Are you sure you want to execute it?`;
+      `This action will ${actionLabel}: ${this.toolName}. Continue?`;
 
     return html`
       <dialog class="security-dialog" @cancel=${this._handleCancel}>
@@ -101,8 +103,8 @@ export class SecurityDialog extends LitElement {
           <p class="dialog-title">⚠️ <span class="security-dialog-tool-name">${this.toolName}</span></p>
           <p class="dialog-desc">${description}</p>
           <div class="dialog-actions">
-            <button class="btn-cancel" @click=${this._deny}>Cancel</button>
-            <button class="btn-danger" @click=${this._approve}>Execute</button>
+            <button class="btn-cancel" @click=${this._deny}>Not now</button>
+            <button class="btn-danger" @click=${this._approve}>Continue</button>
           </div>
         </div>
       </dialog>

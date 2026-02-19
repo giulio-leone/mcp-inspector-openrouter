@@ -67,7 +67,9 @@ export class AIChatController implements IResettable {
 
   resetOnConversationChange(): void {
     this.activeMentions = [];
+    this.userPromptPendingId++;
     this.lastSuggestedUserPrompt = '';
+    this.deps.chatInput.setPresets([]);
     // pinnedConv is NOT reset here — it's self-cleaning inside promptAI()
     // and resetting it mid-flight would mis-route error messages
   }
@@ -113,7 +115,7 @@ export class AIChatController implements IResettable {
         await this.promptAI(message);
       } catch (error) {
         convCtrl.state.trace.push({ error });
-        convCtrl.addAndRender('error', `⚠️ Error: "${error}"`, {}, this.pinnedConv ?? undefined);
+        convCtrl.addAndRender('error', 'Sorry, something went wrong. Please try again.', {}, this.pinnedConv ?? undefined);
       }
     });
 
@@ -136,12 +138,13 @@ export class AIChatController implements IResettable {
     const { chatInput } = this.deps;
     const currentTools = this.deps.getCurrentTools();
 
-    if (
-      currentTools.length === 0 ||
-      !this.genAI ||
-      chatInput.value !== this.lastSuggestedUserPrompt
-    )
+    if (currentTools.length === 0 || !this.genAI) {
+      this.userPromptPendingId++;
+      chatInput.setPresets([]);
       return;
+    }
+
+    if (chatInput.value.trim().length > 0) return;
 
     const userPromptId = ++this.userPromptPendingId;
     const response = await this.genAI.sendMessage([
@@ -150,28 +153,23 @@ export class AIChatController implements IResettable {
         content: [
           '**Context:**',
           `Today's date is: ${this.getFormattedDate()}`,
-          '**Task:** Generate one natural user query for the tools below. Output the query text only.',
+          '**Task:** Generate exactly 3 short user prompt presets that help complete common tasks with these tools.',
+          'Return ONLY a valid JSON array of strings (no markdown, no explanation).',
+          'Each preset must be practical, action-oriented, and under 90 characters.',
           '**Tools:**',
           JSON.stringify(currentTools),
         ].join('\n'),
       },
     ]);
 
-    if (
-      userPromptId !== this.userPromptPendingId ||
-      chatInput.value !== this.lastSuggestedUserPrompt
-    )
-      return;
+    if (userPromptId !== this.userPromptPendingId || chatInput.value.trim().length > 0) return;
 
     const rawContent = response.choices?.[0]?.message?.content;
     const text = typeof rawContent === 'string' ? rawContent : (rawContent ?? '').toString();
-    this.lastSuggestedUserPrompt = text;
-    chatInput.value = '';
-    for (const chunk of text) {
-      await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      chatInput.value += chunk;
-    }
-    chatInput.syncState();
+    const presets = this.extractPresetPrompts(text);
+    if (presets.length === 0) return;
+    this.lastSuggestedUserPrompt = presets[0];
+    chatInput.setPresets(presets);
   }
 
   async promptAI(providedMessage?: string): Promise<void> {
@@ -452,10 +450,10 @@ export class AIChatController implements IResettable {
           convCtrl.addAndRender('ai', event.text, { reasoning: event.reasoning }, pinnedConv);
           break;
         case 'timeout':
-          convCtrl.addAndRender('error', '⚠️ Tool execution loop timed out after 60s.', {}, pinnedConv);
+          convCtrl.addAndRender('error', 'This took too long and was stopped. Please try again.', {}, pinnedConv);
           break;
         case 'max_iterations':
-          convCtrl.addAndRender('error', '⚠️ Reached maximum tool iterations (10).', {}, pinnedConv);
+          convCtrl.addAndRender('error', 'I hit an internal step limit and had to stop.', {}, pinnedConv);
           break;
         case 'navigation':
           logger.info('Orchestrator', `Navigation detected (${event.toolName})`);
@@ -499,5 +497,27 @@ export class AIChatController implements IResettable {
       month: 'long',
       day: 'numeric',
     });
+  }
+
+  private extractPresetPrompts(text: string): string[] {
+    const normalized = text.trim();
+
+    try {
+      const parsed = JSON.parse(normalized) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(item => String(item).trim())
+          .filter(item => item.length > 0)
+          .slice(0, 3);
+      }
+    } catch {
+      // fallback parser below
+    }
+
+    return normalized
+      .split('\n')
+      .map(line => line.replace(/^[-*\d.)\s]+/, '').trim())
+      .filter(line => line.length > 0)
+      .slice(0, 3);
   }
 }
