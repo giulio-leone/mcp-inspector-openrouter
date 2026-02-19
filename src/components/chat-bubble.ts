@@ -152,6 +152,8 @@ export class ChatBubble extends BaseElement {
       fill: 'Fill field', scroll: 'Scroll', navigate: 'Navigate',
       type: 'Type text', select: 'Select', hover: 'Hover',
       extract: 'Extract data', search: 'Search', close: 'Close',
+      top: 'Scroll to top', bottom: 'Scroll to bottom',
+      down: 'Scroll down', up: 'Scroll up',
     };
     return map[verb] || toolName.replace(/[._-]/g, ' ');
   }
@@ -180,6 +182,8 @@ export class ChatBubble extends BaseElement {
       fill: 'Filled', scroll: 'Scrolled', navigate: 'Navigated',
       type: 'Typed', select: 'Selected', extract: 'Extracted',
       search: 'Searched', close: 'Closed',
+      top: 'Scrolled to top', bottom: 'Scrolled to bottom',
+      down: 'Scrolled down', up: 'Scrolled up',
     };
     const label = doneMap[verb] || `${this._friendlyName(name)} done`;
     let detail = '';

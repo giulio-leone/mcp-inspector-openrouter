@@ -41,6 +41,34 @@ export class PageStateScanner extends BaseScanner {
       ),
     );
 
+    tools.push(
+      this.createTool(
+        'page.scroll-down',
+        'Scroll down by one viewport. Waits for lazy-loaded content. Use repeatedly for infinite scroll pages.',
+        null,
+        this.makeInputSchema([]),
+        1.0,
+        {
+          title: 'Scroll Down',
+          annotations: this.makeAnnotations({ readOnly: true, idempotent: false }),
+        },
+      ),
+    );
+
+    tools.push(
+      this.createTool(
+        'page.scroll-up',
+        'Scroll up by one viewport',
+        null,
+        this.makeInputSchema([]),
+        1.0,
+        {
+          title: 'Scroll Up',
+          annotations: this.makeAnnotations({ readOnly: true, idempotent: false }),
+        },
+      ),
+    );
+
     // ── Back to top button ──
     const backToTop = (root as ParentNode).querySelector(
       '[aria-label*="back to top" i], [class*="back-to-top" i], #back-to-top',
