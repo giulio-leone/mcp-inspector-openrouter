@@ -22,12 +22,14 @@ import * as Store from './chat-store';
 import { buildChatConfig } from './config-builder';
 import type { PlanManager } from './plan-manager';
 import { executeToolLoop } from './tool-loop';
-import { AgentOrchestrator } from '../adapters/agent-orchestrator';
-import { ChromeToolAdapter } from '../adapters/chrome-tool-adapter';
-import { ApprovalGateAdapter } from '../adapters/approval-gate-adapter';
-import { PlanningAdapter } from '../adapters/planning-adapter';
-import { SubagentAdapter } from '../adapters/subagent-adapter';
-import type { ITabSessionPort } from '../ports/tab-session.port';
+import {
+  DeepAgent,
+  createRuntimeAdapter,
+  InMemoryAdapter,
+  type AgentEvent
+} from 'onegenui-deep-agents';
+import { createChromeToolSet } from '../adapters/chrome-tool-adapter';
+
 import type { IPlanningPort } from '../ports/planning.port';
 import { getSecurityTier } from '../content/merge';
 import { showApprovalDialog } from './security-dialog';
@@ -39,6 +41,17 @@ import { createMentionAutocomplete, type MentionAutocomplete, type TabMention } 
 import type { IResettable } from './state-manager';
 import { logger } from './debug-logger';
 
+function sendLog(type: string, payload: any) {
+  fetch('http://localhost:3005/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type,
+      payload: payload instanceof Error ? { message: payload.message, stack: payload.stack } : payload
+    })
+  }).catch(() => { });
+}
+
 export interface AIChatDeps {
   readonly chatInput: ChatInput;
   readonly chatHeader: ChatHeader;
@@ -48,7 +61,6 @@ export interface AIChatDeps {
   readonly convCtrl: ConversationController;
   readonly planManager: PlanManager;
   readonly securityDialogEl: SecurityDialog;
-  readonly tabSession: ITabSessionPort;
 }
 
 export class AIChatController implements IResettable {
@@ -60,6 +72,7 @@ export class AIChatController implements IResettable {
   private activeMentions: TabMention[] = [];
   /** Pinned conversation coordinates for the in-flight request. */
   private pinnedConv: { site: string; convId: string } | null = null;
+  private agents: Record<string, DeepAgent> = {};
 
   constructor(deps: AIChatDeps) {
     this.deps = deps;
@@ -70,6 +83,10 @@ export class AIChatController implements IResettable {
     this.userPromptPendingId++;
     this.lastSuggestedUserPrompt = '';
     this.deps.chatInput.setPresets([]);
+    for (const agent of Object.values(this.agents)) {
+      agent.dispose().catch(console.error);
+    }
+    this.agents = {};
     // pinnedConv is NOT reset here — it's self-cleaning inside promptAI()
     // and resetting it mid-flight would mis-route error messages
   }
@@ -300,9 +317,9 @@ export class AIChatController implements IResettable {
 
     const userMessage: string | ContentPart[] = screenshotDataUrl
       ? [
-          { type: 'text' as const, text: message },
-          { type: 'image_url' as const, image_url: { url: screenshotDataUrl } },
-        ]
+        { type: 'text' as const, text: message },
+        { type: 'image_url' as const, image_url: { url: screenshotDataUrl } },
+      ]
       : message;
 
     chat.trimHistory();
@@ -318,7 +335,7 @@ export class AIChatController implements IResettable {
     if (useOrchestrator) {
       await this.runOrchestrator(
         chat, userMessage, pageContext, allTools, mentionContexts,
-        tab.id, planManager, convCtrl, setCurrentTools, pinnedConv,
+        tab.id, planManager, convCtrl, setCurrentTools, pinnedConv, targetTabId,
       );
     } else {
       const initialResult = await chat.sendMessage({ message: userMessage, config });
@@ -348,146 +365,106 @@ export class AIChatController implements IResettable {
     pageContext: PageContext | null,
     allTools: CleanTool[],
     mentionContexts: { tabId: number; title: string; context: PageContext }[],
-    originTabId: number,
+    tabId: number,
     planManager: PlanManager,
     convCtrl: ConversationController,
     setCurrentTools: (tools: CleanTool[]) => void,
     pinnedConv: { site: string; convId: string },
+    originTabId: number,
   ): Promise<void> {
-    const chromeToolPort = new ChromeToolAdapter();
-    const planningAdapter = new PlanningAdapter(planManager);
-    const tabSession = this.deps.tabSession;
-    if (!tabSession.getSessionId()) tabSession.startSession();
+    const convId = pinnedConv.convId || 'default';
+    sendLog('RUN_ORCHESTRATOR', { convId, userMessage });
+    let agent = this.agents[convId];
 
-    // Build tool name → security tier lookup from current tools
-    const toolMap = new Map(allTools.map((t) => [t.name, t]));
-    const resolveTier = (name: string): number => {
-      const tool = toolMap.get(name);
-      return tool ? getSecurityTier(tool) : 1; // default: navigation
-    };
+    if (!agent) {
+      const yoloSettings = await chrome.storage.local.get([STORAGE_KEY_YOLO_MODE]);
+      const yoloMode = !!yoloSettings[STORAGE_KEY_YOLO_MODE];
 
-    // Read YOLO mode setting
-    const yoloSettings = await chrome.storage.local.get([STORAGE_KEY_YOLO_MODE]);
-    const yoloMode = !!yoloSettings[STORAGE_KEY_YOLO_MODE];
+      const { securityDialogEl } = this.deps;
+      const approvalDialogCallback = async (req: { toolName: string; args: any }) => {
+        // Find tier
+        const tDef = allTools.find(t => t.name === req.toolName);
+        const tier = tDef ? getSecurityTier(tDef) : 1;
+        const approved = await showApprovalDialog(securityDialogEl, req.toolName, tier);
+        return { approved, reason: approved ? 'User approved' : 'User denied' };
+      };
 
-    // Wrap tool port with approval gate
-    const { securityDialogEl } = this.deps;
-    const approvalGate = new ApprovalGateAdapter(
-      chromeToolPort,
-      resolveTier,
-      (req) => showApprovalDialog(securityDialogEl, req.toolName, req.tier),
-    );
-    if (yoloMode) approvalGate.setAutoApprove(true);
+      const apiSettings = await chrome.storage.local.get([STORAGE_KEY_API_KEY, STORAGE_KEY_MODEL]);
+      const apiKey = apiSettings[STORAGE_KEY_API_KEY] || '';
+      const selectedModel = apiSettings[STORAGE_KEY_MODEL] || DEFAULT_MODEL;
+      const { createOpenRouter } = await import('@openrouter/ai-sdk-provider');
+      const openrouter = createOpenRouter({ apiKey });
 
-    // Non-owning proxy: delegates all methods to shared tabSession,
-    // except endSession() which is a no-op so dispose() won't destroy shared state
-    const sessionProxy: ITabSessionPort = {
-      startSession: () => tabSession.startSession(),
-      setTabContext: (id, ctx) => tabSession.setTabContext(id, ctx),
-      storeData: (id, k, v) => tabSession.storeData(id, k, v),
-      getTabContext: (id) => tabSession.getTabContext(id),
-      getAllContexts: () => tabSession.getAllContexts(),
-      buildContextSummary: () => tabSession.buildContextSummary(),
-      getSessionId: () => tabSession.getSessionId(),
-      endSession: () => {},
-    };
+      const browserTools = createChromeToolSet({ tabId, originTabId });
 
-    // Read API credentials for subagent chat instances (independent from parent)
-    const subagentStorage = await chrome.storage.local.get([STORAGE_KEY_API_KEY, STORAGE_KEY_MODEL]);
-    const subagentApiKey = (subagentStorage[STORAGE_KEY_API_KEY] as string) ?? '';
-    const subagentModel = (subagentStorage[STORAGE_KEY_MODEL] as string) ?? DEFAULT_MODEL;
+      agent = DeepAgent.create({
+        name: 'GaussFlow Agent',
+        model: openrouter(selectedModel),
+        instructions: buildChatConfig(pageContext, allTools as any, planManager.planModeEnabled, mentionContexts).systemInstruction?.join('\n') || '',
+        maxSteps: 15,
+        subagent: {},
+        approval: {
+          defaultMode: yoloMode ? 'approve-all' : 'deny-all',
+          autoApprove: ['ls', 'read_file'],
+          requireApproval: ['execute_script', 'create_file', 'edit_file', 'delete_file'],
+          onApprovalRequired: async (req: any) => {
+            const res = await approvalDialogCallback(req);
+            return String(res.approved) === 'yes';
+          }
+        } as any
+      })
+        .withTools(browserTools as any)
+        .withPlanning()
+        .build();
 
-    const orchestrator = new AgentOrchestrator({
-      toolPort: approvalGate,
-      contextPort: {} as any, // Not used during run() — context is passed inline
-      planningPort: planningAdapter,
-      tabSession: sessionProxy,
-      subagentPort: new SubagentAdapter(() => {
-        // Each subagent gets its own OpenRouterChat to avoid history corruption
-        const subChat = new OpenRouterChat(subagentApiKey, subagentModel);
-        // Subagents get a no-op planning port to avoid corrupting parent's plan state
-        const noopPlanning: IPlanningPort = {
-          createPlan: () => ({ goal: '', steps: [], status: 'pending', createdAt: Date.now() }),
-          updatePlan: () => ({ goal: '', steps: [], status: 'pending', createdAt: Date.now() }),
-          getCurrentPlan: () => null,
-          advanceStep: () => {},
-          markStepDone: () => {},
-          markStepFailed: () => {},
-          onPlanChanged: () => () => {},
-        };
-        return new AgentOrchestrator({
-          toolPort: approvalGate,
-          contextPort: {} as any,
-          planningPort: noopPlanning,
-          chatFactory: () => subChat,
-          buildConfig: (ctx, tools) =>
-            buildChatConfig(ctx, tools as unknown as CleanTool[], planManager.planModeEnabled, mentionContexts),
-        });
-      }),
-      chatFactory: () => chat,
-      buildConfig: (ctx, tools) =>
-        buildChatConfig(ctx, tools as unknown as CleanTool[], planManager.planModeEnabled, mentionContexts),
-    });
+      agent.eventBus.on('*', (event: any) => {
+        sendLog('AGENT_EVENT', event);
+        if (!this.pinnedConv) return;
+        switch (event.type) {
+          case 'tool:call':
+            convCtrl.addAndRender('tool_call', '', { tool: event.data.name, args: event.data.args }, this.pinnedConv);
+            break;
+          case 'tool:result':
+            convCtrl.addAndRender(
+              'tool_result',
+              typeof event.data.result === 'string' ? event.data.result : JSON.stringify(event.data.result),
+              { tool: event.data.name },
+              this.pinnedConv,
+            );
+            break;
+          case 'error':
+            convCtrl.addAndRender('tool_error', event.data.error?.message || 'Error occurred', { tool: 'Agent' }, this.pinnedConv);
+            break;
+          case 'step:start':
+            if (event.data.text) {
+              convCtrl.addAndRender('ai', event.data.text, {}, this.pinnedConv);
+            }
+            break;
+        }
+      });
 
-    // Subscribe to events for UI rendering
-    orchestrator.onEvent((event) => {
-      switch (event.type) {
-        case 'tool_call':
-          convCtrl.addAndRender('tool_call', '', { tool: event.name, args: event.args }, pinnedConv);
-          break;
-        case 'tool_result':
-          convCtrl.addAndRender(
-            'tool_result',
-            typeof event.data === 'string' ? event.data : JSON.stringify(event.data),
-            { tool: event.name },
-            pinnedConv,
-          );
-          break;
-        case 'tool_error':
-          convCtrl.addAndRender('tool_error', event.error, { tool: event.name }, pinnedConv);
-          break;
-        case 'ai_response':
-          convCtrl.addAndRender('ai', event.text, { reasoning: event.reasoning }, pinnedConv);
-          break;
-        case 'timeout':
-          convCtrl.addAndRender('error', 'This took too long and was stopped. Please try again.', {}, pinnedConv);
-          break;
-        case 'max_iterations':
-          convCtrl.addAndRender('error', 'I hit an internal step limit and had to stop.', {}, pinnedConv);
-          break;
-        case 'navigation':
-          logger.info('Orchestrator', `Navigation detected (${event.toolName})`);
-          break;
-        case 'subagent_started':
-          logger.info('Orchestrator', `Subagent started: ${event.task}`);
-          convCtrl.addAndRender('tool_call', '', { tool: 'delegate_task', args: { task: event.task } }, pinnedConv);
-          break;
-        case 'subagent_completed':
-          logger.info('Orchestrator', `Subagent ${event.subagentId} completed (${event.stepsCompleted} steps)`);
-          convCtrl.addAndRender('tool_result', event.text, { tool: 'delegate_task' }, pinnedConv);
-          break;
-        case 'subagent_failed':
-          logger.warn('Orchestrator', `Subagent ${event.subagentId} failed: ${event.error}`);
-          convCtrl.addAndRender('tool_error', event.error, { tool: 'delegate_task' }, pinnedConv);
-          break;
+      this.agents[convId] = agent;
+    }
+
+    const sessionId = pinnedConv.convId || Date.now().toString();
+
+    try {
+      const result = await agent.run(
+        typeof userMessage === 'string' ? userMessage : JSON.stringify(userMessage)
+      );
+
+      sendLog('AGENT_RUN_SUCCESS', result);
+
+      if (result.text) {
+        convCtrl.addAndRender('ai', result.text, {}, pinnedConv);
       }
-    });
+    } catch (err: any) {
+      sendLog('AGENT_RUN_ERROR', err);
+      convCtrl.addAndRender('error', `Agent crashed: ${err.message}`, {}, pinnedConv);
+    }
 
-    const result = await orchestrator.run(userMessage, {
-      pageContext,
-      tools: allTools as unknown as ToolDefinition[],
-      conversationHistory: [],
-      liveState: null,
-      tabId: originTabId,
-      mentionContexts: mentionContexts.length > 0
-        ? mentionContexts.map((mc) => ({ tabId: mc.tabId, title: mc.title, context: mc.context }))
-        : undefined,
-    });
-
-    setCurrentTools(result.updatedTools as unknown as CleanTool[]);
+    setCurrentTools(allTools); // We don't have dynamic 'updatedTools' from run directly usually unless returned by tools
     planManager.markRemainingStepsDone();
-
-    await orchestrator.dispose();
   }
 
   private getFormattedDate(): string {

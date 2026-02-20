@@ -1,0 +1,28 @@
+--- src/adapters/chrome-tool-adapter.ts
++++ src/adapters/chrome-tool-adapter.ts
+@@ -10,6 +10,7 @@
+ import type { ToolCallResult, ToolDefinition, ToolTarget } from '../ports/types';
+ import type { CleanTool } from '../types';
+ import { logger } from '../sidebar/debug-logger';
+ import { waitForTabFocus } from '../utils/adaptive-wait';
++import { tool } from 'ai';
++import { z } from 'zod';
+ 
+ /** Determine whether a tool runs in the background service worker */
+@@ -44,6 +45,43 @@
+   };
+ }
+ 
++/** Creates AI SDK compatible tools from current Chrome tools */
++export function createChromeToolSet(target: ToolTarget, adapter = new ChromeToolAdapter()) {
++  // We return a proxy that generates tools on demand, or we could fetch them ahead of time.
++  // For immediate integration, let's create a dynamic handler that takes tool JSON schemas
++  // from the content script and wraps them in AI SDK `tool` instances.
++  // Since we don't have the full list synchronously here, we can create a generic "execute_chrome_tool"
++  // or we need to await the tool definitions first.
++  // 
++  // Given the current architecture, ai-chat-controller needs to map CleanTool[] -> AI SDK Tools
++  return {};
++}
++
+ export class ChromeToolAdapter implements IToolExecutionPort {

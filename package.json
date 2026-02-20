@@ -36,9 +36,14 @@
     "webpack-merge": "^6.0.1"
   },
   "dependencies": {
+    "@giulio-leone/gaussflow-agent": "github:giulio-leone/onegenui-deep-agents",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
+    "ai": "^6.0.94",
     "lit": "^3.3.2",
+    "onecrawl": "file:../../Sviluppo/genUi/json-render/repos/onecrawl",
     "onegenui-deep-agents": "file:../onecrawl",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
   }
 }

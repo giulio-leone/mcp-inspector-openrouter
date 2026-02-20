@@ -11,6 +11,8 @@ import type { ToolCallResult, ToolDefinition, ToolTarget } from '../ports/types'
 import type { CleanTool } from '../types';
 import { logger } from '../sidebar/debug-logger';
 import { waitForTabFocus } from '../utils/adaptive-wait';
+import { tool } from 'ai';
+import { z } from 'zod';
 
 /** Determine whether a tool runs in the background service worker */
 function isBrowserTool(name: string): boolean {
@@ -41,6 +43,33 @@ function toToolDefinition(tool: CleanTool): ToolDefinition {
     parametersSchema: schema ?? {},
     category: tool.category,
   };
+}
+
+/** Creates a dynamic AI SDK compatible tool set using the adapter */
+export function createChromeToolSet(target: ToolTarget, adapter = new ChromeToolAdapter()): Record<string, any> {
+  const tools: Record<string, any> = {};
+
+  // For now, these are wrappers around the adapter's generic execute method.
+  // The actual parametersSchema is provided by the frontend chat builder but 
+  // DeepAgent requires tools to be registered upfront. 
+  // Normally we would generate tools with z.object() schemas here if we knew them ahead of time.
+  // We can return a Proxy that dynamically creates tools as they are accessed by GaussFlow.
+  return new Proxy({}, {
+    get(targetObj, prop) {
+      if (typeof prop !== 'string' || prop === 'then') return undefined;
+
+      // Lazily create an ai.tool wrapper
+      return tool({
+        description: `Execute chrome tool: ${prop}`,
+        parameters: z.object({}), // AI SDK requires a Zod schema here, using a generic permissive one
+        execute: async (args: any, context?: any) => {
+          const res = await adapter.execute(prop, args, target);
+          if (!res.success) throw new Error(res.error || 'Unknown error');
+          return res.data;
+        }
+      } as any);
+    }
+  });
 }
 
 export class ChromeToolAdapter implements IToolExecutionPort {

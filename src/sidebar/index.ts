@@ -191,9 +191,9 @@ const aiChat = new AIChatController({
   getCurrentTab,
   getCurrentTools: (): CleanTool[] => currentTools,
   setCurrentTools: (t): void => { currentTools = t; },
-  convCtrl, planManager,
+  convCtrl,
+  planManager,
   securityDialogEl,
-  tabSession,
 });
 stateManager.register(aiChat);
 void aiChat.init();

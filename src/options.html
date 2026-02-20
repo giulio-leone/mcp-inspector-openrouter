@@ -11,121 +11,152 @@
   <meta charset="utf-8">
   <style>
     :root {
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --bg: #f9fafb;
+      /* Light theme (macOS System Settings feel) */
+      --primary: #007aff;
+      --primary-hover: #0060cc;
+      --bg: #f2f2f7;
       --bg-card: #ffffff;
-      --text: #1f2937;
-      --text-secondary: #6b7280;
-      --border: #e5e7eb;
-      --success: #10b981;
-      --error: #ef4444;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --text: #1c1c1e;
+      --text-secondary: #8e8e93;
+      --border: #c6c6c8;
+      --success: #34c759;
+      --error: #ff3b30;
+      /* Squircles */
+      --radius: 10px;
+      /* Very subtle shadow for cards */
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --primary: #3b82f6;
-        --primary-hover: #60a5fa;
-        --bg: #111827;
-        --bg-card: #1f2937;
-        --text: #f3f4f6;
-        --text-secondary: #9ca3af;
-        --border: #374151;
-        --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        /* Dark theme (macOS System Settings feel) */
+        --primary: #0a84ff;
+        --primary-hover: #409cff;
+        --bg: #000000;
+        /* True black or very dark gray for settings background */
+        --bg-card: #1c1c1e;
+        --text: #ffffff;
+        --text-secondary: #98989d;
+        --border: #38383a;
+        --shadow: none;
       }
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: var(--font-family);
       background: var(--bg);
       color: var(--text);
-      padding: 24px;
+      padding: 32px 24px;
       min-width: 420px;
+      max-width: 600px;
+      margin: 0 auto;
+      -webkit-font-smoothing: antialiased;
     }
 
     .options-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 24px;
+      gap: 12px;
+      margin-bottom: 32px;
+      padding-left: 8px;
     }
 
     .options-header h1 {
-      font-size: 18px;
+      font-size: 24px;
       font-weight: 700;
+      letter-spacing: -0.5px;
     }
 
     .card {
       background: var(--bg-card);
-      border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 20px;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      /* For inset borders */
+    }
+
+    /* Emulate macOS grouped list style */
+    .form-group {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group:last-child {
+      border-bottom: none;
+    }
+
+    .form-group.row-group {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .card-title {
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.5px;
       color: var(--text-secondary);
-      margin-bottom: 14px;
+      margin-bottom: 8px;
+      margin-left: 16px;
     }
 
     label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 400;
       color: var(--text);
-      margin-bottom: 6px;
     }
 
     input[type="password"],
     input[type="text"] {
       width: 100%;
-      padding: 10px 12px;
+      padding: 8px 12px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       background: var(--bg);
       color: var(--text);
-      font-size: 13px;
-      font-family: monospace;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      font-size: 15px;
+      font-family: var(--font-family);
+      transition: all 0.2s;
     }
 
-    input:focus {
+    input[type="password"]:focus,
+    input[type="text"]:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-    }
-
-    .form-group {
-      margin-bottom: 14px;
-    }
-
-    .form-group:last-child {
-      margin-bottom: 0;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
     }
 
     button {
-      padding: 9px 18px;
+      padding: 8px 16px;
       background: var(--primary);
       color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.15s, transform 0.1s;
+      align-self: flex-start;
     }
 
     button:hover {
       background: var(--primary-hover);
+    }
+
+    button:active {
+      transform: scale(0.97);
     }
 
     button:disabled {
@@ -134,18 +165,24 @@
     }
 
     .status-message {
-      margin-top: 10px;
-      font-size: 12px;
+      margin-top: 8px;
+      font-size: 13px;
       min-height: 1.2em;
     }
 
-    .status-success { color: var(--success); }
-    .status-error { color: var(--error); }
+    .status-success {
+      color: var(--success);
+    }
+
+    .status-error {
+      color: var(--error);
+    }
 
     .about-text {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-secondary);
-      line-height: 1.6;
+      line-height: 1.5;
+      padding: 14px 16px;
     }
 
     .about-text a {
@@ -157,13 +194,63 @@
       text-decoration: underline;
     }
 
-    datalist { font-family: monospace; }
+    /* Native-like Toggle Switches */
+    input[type="checkbox"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 42px;
+      height: 24px;
+      background: #e9e9ea;
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      input[type="checkbox"] {
+        background: #39393d;
+      }
+    }
+
+    input[type="checkbox"]::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+
+    input[type="checkbox"]:checked {
+      background: var(--success);
+    }
+
+    input[type="checkbox"]:checked::after {
+      transform: translateX(18px);
+    }
+
+    datalist {
+      font-family: var(--font-family);
+    }
   </style>
 </head>
 
 <body>
   <div class="options-header">
-    <span style="font-size:22px">⚙️</span>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+      </path>
+    </svg>
     <h1>MCP Inspector Preferences</h1>
   </div>
 
@@ -173,7 +260,7 @@
       <label for="apiKey">OpenRouter key</label>
       <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
     </div>
-    <div class="form-group">
+    <div class="form-group row-group">
       <button id="saveTestBtn">Save and check connection</button>
       <div id="connectionStatus" class="status-message"></div>
     </div>
@@ -190,13 +277,13 @@
 
   <div class="card">
     <div class="card-title">Experience</div>
-    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-      <input type="checkbox" id="yoloToggle" style="width:auto;" checked />
-      <label for="yoloToggle" style="margin-bottom:0;cursor:pointer;">⚡ Quick run mode — run actions automatically (no confirmation)</label>
+    <div class="form-group row-group">
+      <label for="yoloToggle" style="cursor:pointer;">Quick run mode (no confirmation)</label>
+      <input type="checkbox" id="yoloToggle" checked />
     </div>
-    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-      <input type="checkbox" id="screenshotToggle" style="width:auto;" />
-      <label for="screenshotToggle" style="margin-bottom:0;cursor:pointer;">Include screenshot with AI replies</label>
+    <div class="form-group row-group">
+      <label for="screenshotToggle" style="cursor:pointer;">Include screenshot with AI replies</label>
+      <input type="checkbox" id="screenshotToggle" />
     </div>
   </div>
 
@@ -205,7 +292,8 @@
     <div class="about-text">
       <strong>MCP Inspector OpenRouter</strong><br>
       Version: <span id="versionLabel">—</span><br>
-      <a href="https://github.com/g97iulio1609/mcp-inspector-openrouter" target="_blank" rel="noopener">github.com/g97iulio1609/mcp-inspector-openrouter</a>
+      <a href="https://github.com/g97iulio1609/mcp-inspector-openrouter" target="_blank"
+        rel="noopener">github.com/g97iulio1609/mcp-inspector-openrouter</a>
     </div>
   </div>
 
