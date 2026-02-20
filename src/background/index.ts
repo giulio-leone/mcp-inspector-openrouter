@@ -18,8 +18,10 @@ import {
 } from '../utils/constants';
 import { ChromeStorageAdapter } from '../services/adapters';
 import { handleBrowserTool } from './browser-tools';
+import { BridgeWebSocketClient } from './ws-client';
 
 const storage = new ChromeStorageAdapter();
+const bridgeWs = new BridgeWebSocketClient();
 
 // ── Side Panel ──
 
@@ -116,6 +118,10 @@ chrome.runtime.onMessage.addListener(
     if (isToolsBroadcast(msg) && sender.tab?.id != null) {
       const text = msg.tools.length ? `${msg.tools.length}` : '';
       chrome.action.setBadgeText({ text, tabId: sender.tab.id });
+
+      // Update local bridge WebSocket server with the new tools
+      bridgeWs.updateTools(msg.tools);
+
       return false;
     }
 
